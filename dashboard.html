@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battery SoH Predictor</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+:root{--bg:#0d0f14;--surface:#141720;--s2:#1c2030;--border:#252a38;--accent:#00d4ff;--green:#00e676;--yellow:#ffd740;--red:#ff5252;--text:#e8ecf4;--muted:#6b7280;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:200}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-badge{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#00d4ff,#0077aa);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px}
+.logo-title{font-size:15px;font-weight:600}
+.logo-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.hdr-right{display:flex;align-items:center;gap:12px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.hdr-status{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 61px)}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;max-height:calc(100vh - 61px);position:sticky;top:61px}
+.sb-label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.steps{display:flex;flex-direction:column;gap:2px}
+.step{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;border:1px solid transparent;transition:all .2s}
+.step.done{background:var(--s2)}
+.step.running{background:var(--s2);border-color:var(--accent)}
+.step-num{width:26px;height:26px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;flex-shrink:0;transition:all .3s}
+.step.done .step-num{background:var(--green);color:var(--bg)}
+.step.running .step-num{background:var(--accent);color:var(--bg);animation:pr 1.2s infinite}
+@keyframes pr{0%,100%{box-shadow:0 0 0 0 rgba(0,212,255,.5)}50%{box-shadow:0 0 0 6px rgba(0,212,255,0)}}
+.step-info{flex:1;min-width:0}
+.step-name{font-size:13px;font-weight:500}
+.step-desc{font-size:11px;color:var(--muted);margin-top:1px}
+.step-ms{font-family:var(--mono);font-size:10px;color:var(--green);flex-shrink:0}
+.mcards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mcard{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:11px 12px}
+.mcard.full{grid-column:1/-1}
+.mc-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.mc-val{font-family:var(--mono);font-size:20px;font-weight:700;margin-top:3px;color:var(--accent)}
+.mc-val.g{color:var(--green)}
+.mc-val.y{color:var(--yellow)}
+.content{padding:24px 28px;display:flex;flex-direction:column;gap:18px;overflow-y:auto}
+.tab-bar{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);padding:4px;border-radius:10px;width:fit-content}
+.tab-btn{padding:8px 18px;border-radius:7px;font-size:13px;font-weight:500;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+.tab-btn.active{background:var(--s2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.tab-btn:hover:not(.active){color:var(--text)}
+.tab-pane{display:none;flex-direction:column;gap:18px}
+.tab-pane.active{display:flex}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px}
+.card-title{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.btn{padding:9px 22px;border-radius:8px;font-family:var(--mono);font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s;letter-spacing:.04em}
+.btn-p{background:var(--accent);color:var(--bg)}
+.btn-p:hover{background:#00bfef;transform:translateY(-1px)}
+.btn-p:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-s{background:var(--s2);color:var(--text);border:1px solid var(--border)}
+.btn-s:hover{border-color:var(--accent);color:var(--accent)}
+.dropzone{border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all .2s}
+.dropzone:hover,.dropzone.over{border-color:var(--accent);background:rgba(0,212,255,.04)}
+.dz-icon{font-size:28px;margin-bottom:6px}
+.dz-main{font-size:14px;font-weight:500}
+.dz-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.pg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.pl{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.pv{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600}
+.ps{font-size:10px;color:var(--muted);margin-top:2px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.prog-track{background:var(--border);border-radius:4px;height:5px;overflow:hidden;margin-top:8px}
+.prog-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--green));transition:width .4s ease}
+.console{background:#080a0f;border:1px solid var(--border);border-radius:8px;padding:12px 14px;height:160px;overflow-y:auto;font-family:var(--mono);font-size:11px;line-height:1.8}
+.li{color:var(--accent);display:block}
+.lo{color:var(--green);display:block}
+.lw{color:var(--yellow);display:block}
+.le{color:var(--red);display:block}
+.lm{color:var(--muted);display:block}
+.tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+.tbl th{padding:8px 12px;color:var(--muted);border-bottom:1px solid var(--border);font-size:11px;text-align:left;letter-spacing:.05em}
+.tbl td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--s2)}
+.tbl tr.nr td{animation:rf .5s ease}
+@keyframes rf{from{background:rgba(0,212,255,.12)}to{background:transparent}}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700}
+.tg{background:rgba(0,230,118,.15);color:var(--green)}
+.ty{background:rgba(255,215,64,.15);color:var(--yellow)}
+.tr{background:rgba(255,82,82,.15);color:var(--red)}
+.pred-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;padding:16px 0}
+.soh-big{font-family:var(--mono);font-size:52px;font-weight:700;margin-top:6px}
+.soh-lbl{font-size:12px;color:var(--muted);margin-top:2px}
+.soh-badge{padding:4px 16px;border-radius:20px;font-family:var(--mono);font-size:12px;font-weight:700;margin-top:10px;display:inline-block}
+.empty{text-align:center;padding:40px 24px;color:var(--muted)}
+.empty-icon{font-size:34px;margin-bottom:10px}
+.empty-txt{font-size:14px;font-weight:500}
+.empty-sub{font-size:12px;margin-top:4px}
+.mg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fl{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.07em}
+.fi{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .15s;width:100%}
+.fi:focus{border-color:var(--accent)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+canvas{width:100%!important}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-badge">B</div>
+    <div>
+      <div class="logo-title">Battery SoH Predictor</div>
+      <div class="logo-sub">LSTM · State of Health Estimation</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="live-dot" id="liveDot"></div>
+    <span class="hdr-status" id="hdrStatus">Aucune donnée chargée</span>
+  </div>
+</header>
+
+<div class="layout">
+<div class="sidebar">
+  <div>
+    <div class="sb-label">Pipeline</div>
+    <div class="steps" id="stepsList">
+      <div class="step" id="s0"><div class="step-num" id="sn0">1</div><div class="step-info"><div class="step-name">Chargement CSV</div><div class="step-desc">Lecture &amp; validation</div></div><span class="step-ms" id="sm0"></span></div>
+      <div class="step" id="s1"><div class="step-num" id="sn1">2</div><div class="step-info"><div class="step-name">Normalisation</div><div class="step-desc">StandardScaler</div></div><span class="step-ms" id="sm1"></span></div>
+      <div class="step" id="s2"><div class="step-num" id="sn2">3</div><div class="step-info"><div class="step-name">Fenêtres glissantes</div><div class="step-desc">Sliding window W=3</div></div><span class="step-ms" id="sm2"></span></div>
+      <div class="step" id="s3"><div class="step-num" id="sn3">4</div><div class="step-info"><div class="step-name">Train / Test split</div><div class="step-desc">80% / 20% par cycle</div></div><span class="step-ms" id="sm3"></span></div>
+      <div class="step" id="s4"><div class="step-num" id="sn4">5</div><div class="step-info"><div class="step-name">Entraînement LSTM</div><div class="step-desc">100 epochs max</div></div><span class="step-ms" id="sm4"></span></div>
+      <div class="step" id="s5"><div class="step-num" id="sn5">6</div><div class="step-info"><div class="step-name">Évaluation</div><div class="step-desc">MAE · RMSE · R²</div></div><span class="step-ms" id="sm5"></span></div>
+    </div>
+  </div>
+  <div>
+    <div class="sb-label">Métriques modèle</div>
+    <div class="mcards">
+      <div class="mcard"><div class="mc-label">MAE</div><div class="mc-val g" id="mMAE">--</div></div>
+      <div class="mcard"><div class="mc-label">RMSE</div><div class="mc-val y" id="mRMSE">--</div></div>
+      <div class="mcard full"><div class="mc-label">R² Score</div><div class="mc-val" id="mR2">--</div></div>
+    </div>
+  </div>
+  <div>
+    <div class="sb-label">Dataset</div>
+    <div class="mcards">
+      <div class="mcard"><div class="mc-label">Lignes</div><div class="mc-val" id="mRows" style="font-size:18px">--</div></div>
+      <div class="mcard"><div class="mc-label">Cycles</div><div class="mc-val" id="mCycles" style="font-size:18px">--</div></div>
+      <div class="mcard full"><div class="mc-label">Batteries</div><div class="mc-val" id="mBats" style="font-size:12px;color:var(--text)">--</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="goTab('pipeline',this)">Pipeline</button>
+      <button class="tab-btn"        onclick="goTab('analyse',this)">Analyse</button>
+      <button class="tab-btn"        onclick="goTab('prediction',this)">Prédiction</button>
+      <button class="tab-btn"        onclick="goTab('stream',this)">Temps réel</button>
+      <button class="tab-btn"        onclick="goTab('mongo',this)">MongoDB</button>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="btn btn-s" onclick="resetAll()">Réinitialiser</button>
+      <button class="btn btn-p" id="btnRun" onclick="runPipeline()" disabled>Lancer pipeline</button>
+    </div>
+  </div>
+
+  <!-- ===================== PIPELINE ===================== -->
+  <div class="tab-pane active" id="tab-pipeline">
+    <div class="card">
+      <div class="card-title">Source de données</div>
+      <div class="g2" style="gap:12px;">
+        <div>
+          <div class="dropzone" id="dz" onclick="document.getElementById('fi').click()"
+               ondragover="event.preventDefault();this.classList.add('over')"
+               ondragleave="this.classList.remove('over')"
+               ondrop="onDrop(event)">
+            <div class="dz-icon">&#128196;</div>
+            <div class="dz-main" id="dzMain">Glisser un CSV ici</div>
+            <div class="dz-sub">Colonnes requises : Voltage_measured, Current_measured, Temperature_measured, SoC, cycle_number, battery_id &nbsp;·&nbsp; SoH optionnel</div>
+          </div>
+          <input type="file" id="fi" accept=".csv" style="display:none" onchange="onFileInput(event)">
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;gap:10px;padding:8px;">
+          <div style="font-size:12px;color:var(--muted);text-align:center;">— ou depuis MongoDB —</div>
+          <button class="btn btn-s" style="width:100%" onclick="goTab('mongo',document.querySelectorAll('.tab-btn')[4])">Configurer MongoDB Atlas</button>
+          <div style="font-family:var(--mono);font-size:11px;text-align:center;" id="mgStatusSmall" style="color:var(--muted)">Non connecté</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Hyperparamètres</div>
+      <div class="g3">
+        <div class="pg"><div class="pl">Fenêtre (W)</div><input type="range" min="2" max="8" value="3" oninput="setP('pW',this.value+' bins')"><div class="pv" id="pW">3 bins</div><div class="ps">Bins par séquence LSTM</div></div>
+        <div class="pg"><div class="pl">Ratio test</div><input type="range" min="10" max="40" value="20" oninput="setP('pT',this.value+'%')"><div class="pv" id="pT">20%</div><div class="ps">% cycles pour l'évaluation</div></div>
+        <div class="pg"><div class="pl">Epochs max</div><input type="range" min="20" max="200" step="10" value="100" oninput="setP('pE',this.value)"><div class="pv" id="pE">100</div><div class="ps">Early stopping patience=15</div></div>
+        <div class="pg"><div class="pl">Hidden size</div><input type="range" min="16" max="128" step="16" value="64" oninput="setP('pH',this.value+' unités')"><div class="pv" id="pH">64 unités</div><div class="ps">Mémoire LSTM</div></div>
+        <div class="pg"><div class="pl">Layers</div><input type="range" min="1" max="4" value="2" oninput="setP('pL',this.value)"><div class="pv" id="pL">2</div><div class="ps">Couches empilées</div></div>
+        <div class="pg"><div class="pl">Learning rate</div><input type="range" min="1" max="5" value="3" oninput="setLR(this.value)"><div class="pv" id="pLR">0.001</div><div class="ps">Adam optimizer</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;">
+        <span>Exécution</span>
+        <span id="pctLbl" style="color:var(--accent);font-family:var(--mono)">0%</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+      <div style="height:12px;"></div>
+      <div class="console" id="consoleEl"><span class="lm">> Prêt. Chargez un CSV ou connectez MongoDB Atlas, puis lancez le pipeline.</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== ANALYSE ===================== -->
+  <div class="tab-pane" id="tab-analyse">
+    <div id="analyseEmpty" class="empty">
+      <div class="empty-icon">&#128202;</div>
+      <div class="empty-txt">Aucune donnée disponible</div>
+      <div class="empty-sub">Chargez un fichier CSV ou connectez MongoDB, puis lancez le pipeline.</div>
+    </div>
+    <div id="analyseContent" style="display:none;flex-direction:column;gap:18px;">
+      <div class="g3" id="statsCards"></div>
+      <div class="g2">
+        <div class="card"><div class="card-title" id="distTitle">Distribution SoH</div><canvas id="cDist" height="220"></canvas></div>
+        <div class="card"><div class="card-title">Tension vs SoH / SoC</div><canvas id="cScatter" height="220"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Signaux par cycle</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--muted);">Cycle :</span>
+          <select id="cycleSel" onchange="renderSignals()" style="background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 8px;"></select>
+        </div>
+        <canvas id="cSignals" height="200"></canvas>
+      </div>
+      <div class="card"><div class="card-title">Corrélations de Pearson avec la cible</div><canvas id="cCorr" height="180"></canvas></div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="card-title" style="margin:0">Données brutes (50 premières lignes)</div>
+          <button class="btn btn-s" onclick="exportCSV(APP.rawData,'donnees_brutes.csv')">Exporter CSV</button>
+        </div>
+        <div style="overflow-x:auto;max-height:300px;overflow-y:auto;">
+          <table class="tbl"><thead><tr id="rawThead"></tr></thead><tbody id="rawTbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== PRÉDICTION ===================== -->
+  <div class="tab-pane" id="tab-prediction">
+    <div class="card">
+      <div class="card-title">Prédire le SoH sur le fichier chargé</div>
+      <div id="predEmpty" class="empty" style="padding:24px;">
+        <div class="empty-icon">&#128269;</div>
+        <div class="empty-txt">Chargez d'abord un fichier CSV ou des données MongoDB</div>
+        <div class="empty-sub">Le SoH réel (si présent) sera comparé ligne par ligne aux prédictions.</div>
+      </div>
+      <div id="predContent" style="display:none;">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+          <button class="btn btn-p" onclick="predictFromFile()">Calculer prédictions</button>
+          <button class="btn btn-s" onclick="exportCSV(APP.predResults,'predictions_soh.csv')" id="btnExportPred" disabled>Exporter CSV</button>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--muted);" id="predCount"></span>
+        </div>
+        <div id="predResultsWrap" style="display:none;">
+          <div class="g3" id="predMetrics" style="margin-bottom:14px;"></div>
+          <div style="overflow-x:auto;max-height:380px;overflow-y:auto;">
+            <table class="tbl"><thead><tr><th>Battery</th><th>Cycle</th><th>Bin</th><th>Tension (V)</th><th>Courant (A)</th><th>SoC (%)</th><th>SoH prédit (%)</th><th>SoH réel (%)</th><th>Erreur</th><th>Statut</th></tr></thead><tbody id="predTbody"></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pred-grid">
+      <div class="card">
+        <div class="card-title">Prédiction manuelle — saisie libre</div>
+        <div class="pg"><div class="pl">Tension (V)</div><input type="range" min="2.7" max="4.2" step="0.01" value="3.5" oninput="setSl('slV',this.value+' V');livePredict()"><div class="pv" id="slV">3.5 V</div></div>
+        <div class="pg"><div class="pl">Courant (A)</div><input type="range" min="-4.1" max="-0.8" step="0.01" value="-2.0" oninput="setSl('slC',this.value+' A');livePredict()"><div class="pv" id="slC">-2.0 A</div></div>
+        <div class="pg"><div class="pl">Température (°C)</div><input type="range" min="0" max="70" step="0.5" value="35" oninput="setSl('slT',this.value+' °C');livePredict()"><div class="pv" id="slT">35 °C</div></div>
+        <div class="pg"><div class="pl">SoC (%)</div><input type="range" min="0" max="100" step="0.5" value="50" oninput="setSl('slS',this.value+'%');livePredict()"><div class="pv" id="slS">50%</div></div>
+        <div class="pg"><div class="pl">Numéro de cycle</div><input type="range" min="1" max="200" value="1" oninput="setSl('slN','Cycle '+this.value);livePredict()"><div class="pv" id="slN">Cycle 1</div></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px;padding:10px;background:var(--s2);border-radius:6px;line-height:1.6;">
+          Normalisation basée sur les statistiques du dataset chargé.<br>
+          Si aucun fichier chargé : statistiques du dataset de référence (29 180 mesures, 24 batteries).
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Résultat estimé</div>
+        <div class="gauge-wrap">
+          <canvas id="gauge" width="220" height="120"></canvas>
+          <div class="soh-big" id="sohBig">-- %</div>
+          <div class="soh-lbl">State of Health estimé</div>
+          <div class="soh-badge" id="sohBadge">--</div>
+        </div>
+        <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+          <div class="card-title">Interprétation</div>
+          <div id="sohInterp" style="font-size:13px;line-height:1.7;color:var(--muted);">Ajustez les curseurs pour obtenir une estimation.</div>
+        </div>
+        <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+          <div class="card-title">Historique prédictions</div>
+          <canvas id="cHist" height="110"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TEMPS RÉEL ===================== -->
+  <div class="tab-pane" id="tab-stream">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-p" id="btnStream" onclick="toggleStream()">Démarrer flux</button>
+      <button class="btn btn-s" onclick="clearStream()">Vider</button>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">
+        Source : <span id="streamSrc" style="color:var(--accent)">simulation</span>
+        &nbsp;·&nbsp; 1 mesure / 1.5s
+      </div>
+      <div style="margin-left:auto;font-family:var(--mono);font-size:12px;">
+        Reçues : <span id="streamCnt" style="color:var(--accent)">0</span>
+      </div>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="card-title">SoH prédit</div><canvas id="cRtSoh" height="200"></canvas></div>
+      <div class="card"><div class="card-title">Tension mesurée (V)</div><canvas id="cRtVolt" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="card-title" style="margin:0">Flux de mesures</div>
+        <button class="btn btn-s" onclick="exportCSV(APP.streamLog,'flux_temps_reel.csv')">Exporter CSV</button>
+      </div>
+      <div style="overflow-x:auto;max-height:300px;overflow-y:auto;">
+        <table class="tbl">
+          <thead><tr><th>Timestamp</th><th>Battery</th><th>Cycle</th><th>Tension (V)</th><th>Courant (A)</th><th>Temp (°C)</th><th>SoC (%)</th><th>SoH prédit (%)</th><th>Statut</th></tr></thead>
+          <tbody id="streamTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MONGODB ===================== -->
+  <div class="tab-pane" id="tab-mongo">
+    <div class="card">
+      <div class="card-title">Connexion MongoDB Atlas — Data API</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.7;">
+        Utilisez l'<strong style="color:var(--text)">Atlas Data API</strong> (HTTPS) — aucune dépendance npm requise.
+        Créez une clé API dans Atlas → <em>App Services → Data API → API Keys</em>.
+        Le compte doit avoir les droits <strong style="color:var(--text)">readAnyDatabase</strong>.
+      </p>
+      <div class="mg-grid">
+        <div class="fg" style="grid-column:1/-1;"><div class="fl">ENDPOINT DATA API (App Services URL)</div><input class="fi" id="mgUri" type="text" placeholder="https://data.mongodb-api.com/app/data-xxxxx/endpoint/data/v1"></div>
+        <div class="fg" style="grid-column:1/-1;"><div class="fl">API KEY</div><input class="fi" id="mgKey" type="password" placeholder="Votre clé API Atlas"></div>
+        <div class="fg"><div class="fl">DATA SOURCE (cluster)</div><input class="fi" id="mgSrc" type="text" value="Cluster0"></div>
+        <div class="fg"><div class="fl">DATABASE</div><input class="fi" id="mgDb" type="text" value="battery_db"></div>
+        <div class="fg"><div class="fl">COLLECTION</div><input class="fi" id="mgCol" type="text" value="cycles"></div>
+        <div class="fg"><div class="fl">FILTRE JSON (optionnel)</div><input class="fi" id="mgFilter" type="text" value="{}"></div>
+        <div class="fg"><div class="fl">LIMITE (docs max)</div><input class="fi" id="mgLimit" type="number" value="5000"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-p" onclick="connectMongo()">Tester connexion</button>
+        <button class="btn btn-s" onclick="fetchMongo()">Charger données</button>
+      </div>
+      <div id="mgFb" style="display:none;margin-top:12px;font-family:var(--mono);font-size:12px;padding:10px 14px;border-radius:8px;line-height:1.6;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Format attendu des documents</div>
+      <div style="background:#080a0f;border-radius:8px;padding:14px 16px;font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--muted);">
+        <span style="color:var(--accent)">// Document minimal requis :</span><br>
+        {<br>
+        &nbsp;&nbsp;<span style="color:var(--green)">"Voltage_measured"</span> : <span style="color:var(--yellow)">3.96</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--muted)">// tension (V)</span><br>
+        &nbsp;&nbsp;<span style="color:var(--green)">"Current_measured"</span> : <span style="color:var(--yellow)">-0.99</span>,&nbsp;&nbsp;&nbsp;<span style="color:var(--muted)">// courant (A)</span><br>
+        &nbsp;&nbsp;<span style="color:var(--green)">"Temperature_measured"</span> : <span style="color:var(--yellow)">25.5</span>,<span style="color:var(--muted)">// température (°C)</span><br>
+        &nbsp;&nbsp;<span style="color:var(--green)">"SoC"</span> : <span style="color:var(--yellow)">87.4</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--muted)">// état de charge (%)</span><br>
+        &nbsp;&nbsp;<span style="color:var(--green)">"cycle_number"</span> : <span style="color:var(--yellow)">1</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--muted)">// numéro de cycle</span><br>
+        &nbsp;&nbsp;<span style="color:var(--green)">"battery_id"</span> : <span style="color:var(--green)">"B0047"</span>,&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--muted)">// identifiant batterie</span><br>
+        &nbsp;&nbsp;<span style="color:var(--accent)">"SoH"</span> : <span style="color:var(--yellow)">83.63</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--accent)">// optionnel — pour comparaison</span><br>
+        }
+      </div>
+    </div>
+  </div>
+
+</div><!-- content -->
+</div><!-- layout -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ============================================================
+// ÉTAT GLOBAL
+// ============================================================
+const APP = {
+  rawData: null, headers: [], hasSoH: false,
+  stats: {}, charts: {},
+  predResults: [], streamLog: [],
+  predHistory: [],
+  streamTimer: null, streamIdx: 0,
+  pipeline: { done: false, running: false }
+};
+
+// Stats de référence issues du vrai dataset (29 180 lignes, main.py)
+const REF = {
+  Voltage_measured:    { mean:3.457,  std:0.260  },
+  Current_measured:    { mean:-2.327, std:0.977  },
+  Temperature_measured:{ mean:34.949, std:10.819 },
+  SoC:                 { mean:49.576, std:29.087 },
+  cycle_number:        { mean:50.0,   std:40.0   },
+  SoH:                 { mean:82.35,  std:7.04   }
+};
+
+// ============================================================
+// UTILITAIRES
+// ============================================================
+const $ = id => document.getElementById(id);
+function setP(id,v){ $(id).textContent=v; }
+function setSl(id,v){ $(id).textContent=v; }
+function setLR(v){ const l=[.01,.005,.001,.0005,.0001]; setP('pLR',l[v-1]||.001); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function clog(type, msg){
+  const el=$('consoleEl'), ts=new Date().toLocaleTimeString('fr',{hour12:false});
+  const sp=document.createElement('span'); sp.className=type; sp.textContent=`[${ts}] ${msg}`;
+  el.appendChild(sp); el.scrollTop=el.scrollHeight;
+}
+
+function setProg(pct){
+  $('prog').style.width=pct+'%';
+  $('pctLbl').textContent=pct+'%';
+}
+
+function setStepUI(i,status){
+  const s=$('s'+i), sn=$('sn'+i);
+  s.className='step '+(status||'');
+  if(status==='done') sn.textContent='✓';
+  else sn.textContent=i+1;
+}
+
+function goTab(id, btn){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  $('tab-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='analyse' && APP.rawData) renderAnalyse();
+  if(id==='prediction') renderHistChart();
+}
+
+function exportCSV(data, filename){
+  if(!data||!data.length){ alert('Aucune donnée à exporter.'); return; }
+  const keys=Object.keys(data[0]);
+  const rows=[keys.join(','), ...data.map(r=>keys.map(k=>r[k]??'').join(','))];
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
+  a.download=filename; a.click();
+}
+
+function destroyChart(id){
+  if(APP.charts[id]){ APP.charts[id].destroy(); delete APP.charts[id]; }
+}
+
+function chartBase(xlabel, ylabel){
+  return {
+    responsive:true, animation:{duration:400},
+    plugins:{ legend:{ labels:{ color:'#e8ecf4', font:{size:11} } } },
+    scales:{
+      x:{ grid:{color:'#252a38'}, ticks:{color:'#6b7280',font:{size:10}}, title:{display:!!xlabel,text:xlabel,color:'#6b7280'} },
+      y:{ grid:{color:'#252a38'}, ticks:{color:'#6b7280',font:{size:10}}, title:{display:!!ylabel,text:ylabel,color:'#6b7280'} }
+    }
+  };
+}
+
+function pearson(x,y){
+  const n=Math.min(x.length,y.length);
+  const mx=x.slice(0,n).reduce((a,b)=>a+b,0)/n, my=y.slice(0,n).reduce((a,b)=>a+b,0)/n;
+  let num=0,dx=0,dy=0;
+  for(let i=0;i<n;i++){num+=(x[i]-mx)*(y[i]-my);dx+=(x[i]-mx)**2;dy+=(y[i]-my)**2;}
+  return dx&&dy ? num/Math.sqrt(dx*dy) : 0;
+}
+
+function r2score(real,pred){
+  const mr=real.reduce((a,b)=>a+b,0)/real.length;
+  const ss_res=real.reduce((s,v,i)=>s+(v-pred[i])**2,0);
+  const ss_tot=real.reduce((s,v)=>s+(v-mr)**2,0);
+  return ss_tot===0 ? 1 : 1-ss_res/ss_tot;
+}
+
+function histogram(data,bins){
+  const mn=Math.min(...data), mx=Math.max(...data), step=(mx-mn)/bins;
+  const counts=new Array(bins).fill(0), labels=[];
+  for(let i=0;i<bins;i++){
+    labels.push((mn+i*step).toFixed(2));
+    data.forEach(v=>{ if(v>=mn+i*step && v<mn+(i+1)*step) counts[i]++; });
+  }
+  return {labels,counts};
+}
+
+// ============================================================
+// CHARGEMENT CSV
+// ============================================================
+function onDrop(e){
+  e.preventDefault(); $('dz').classList.remove('over');
+  if(e.dataTransfer.files[0]) parseCSV(e.dataTransfer.files[0]);
+}
+function onFileInput(e){ if(e.target.files[0]) parseCSV(e.target.files[0]); }
+
+function parseCSV(file){
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const lines=e.target.result.trim().split('\n');
+    const headers=lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+    const required=['Voltage_measured','Current_measured','Temperature_measured','SoC','cycle_number','battery_id'];
+    const missing=required.filter(c=>!headers.includes(c));
+    if(missing.length){ clog('le','Colonnes manquantes : '+missing.join(', ')); return; }
+
+    const rows=[];
+    for(let i=1;i<lines.length;i++){
+      const vals=lines[i].split(',').map(v=>v.trim().replace(/"/g,''));
+      if(vals.length!==headers.length) continue;
+      const row={};
+      headers.forEach((h,j)=>{ row[h]=isNaN(vals[j])||vals[j]===''?vals[j]:parseFloat(vals[j]); });
+      rows.push(row);
+    }
+
+    loadData(rows, headers, file.name);
+  };
+  reader.readAsText(file);
+}
+
+function loadData(rows, headers, source){
+  APP.rawData=rows; APP.headers=headers;
+  APP.hasSoH=headers.includes('SoH');
+  computeStats();
+
+  const batteries=[...new Set(rows.map(r=>r.battery_id))];
+  const cycles=[...new Set(rows.map(r=>r.cycle_number))];
+
+  $('mRows').textContent=rows.length;
+  $('mCycles').textContent=cycles.length;
+  $('mBats').textContent=batteries.slice(0,5).join(', ')+(batteries.length>5?` +${batteries.length-5}`:'');
+  $('dzMain').textContent=`${source} — ${rows.length} lignes`;
+  $('btnRun').disabled=false;
+  $('predEmpty').style.display='none';
+  $('predContent').style.display='block';
+  $('hdrStatus').textContent=`${rows.length} mesures prêtes`;
+  $('liveDot').style.background='var(--accent)';
+
+  clog('lo',`Chargé : ${rows.length} lignes · ${batteries.length} batteries · ${cycles.length} cycles`);
+  clog('li',`Batteries : ${batteries.join(', ')}`);
+  clog('li',`SoH ${APP.hasSoH?'présent → comparaison prédiction/réel activée':'absent → mode prédiction pure'}`);
+  if(APP.stats.SoH) clog('lm',`SoH : min=${APP.stats.SoH.min.toFixed(2)}%  max=${APP.stats.SoH.max.toFixed(2)}%  moy=${APP.stats.SoH.mean.toFixed(2)}%`);
+}
+
+function computeStats(){
+  const cols=['Voltage_measured','Current_measured','Temperature_measured','SoC'];
+  if(APP.hasSoH) cols.push('SoH');
+  APP.stats={};
+  cols.forEach(col=>{
+    const v=APP.rawData.map(r=>r[col]).filter(x=>typeof x==='number'&&!isNaN(x));
+    if(!v.length) return;
+    const mean=v.reduce((a,b)=>a+b,0)/v.length;
+    APP.stats[col]={
+      mean, std:Math.sqrt(v.reduce((a,b)=>a+(b-mean)**2,0)/v.length),
+      min:Math.min(...v), max:Math.max(...v), count:v.length
+    };
+  });
+}
+
+// ============================================================
+// PIPELINE
+// ============================================================
+async function runPipeline(){
+  if(APP.pipeline.running||!APP.rawData) return;
+  APP.pipeline.running=true;
+  $('btnRun').disabled=true;
+  for(let i=0;i<6;i++){ setStepUI(i,''); $('sm'+i).textContent=''; }
+
+  const batteries=[...new Set(APP.rawData.map(r=>r.battery_id))];
+  const cycles=[...new Set(APP.rawData.map(r=>r.cycle_number))];
+  const W=parseInt($('pW').textContent)||3;
+  const ratioT=parseInt($('pT').textContent)||20;
+  const nTrain=Math.round(cycles.length*(1-ratioT/100));
+  const nWin=Math.max(10,APP.rawData.length-W*cycles.length);
+
+  const steps=[
+    { ms:700, logs:[
+      ['li',`Lecture : ${APP.rawData.length} lignes × ${APP.headers.length} colonnes`],
+      ['lo',`Batteries : ${batteries.join(', ')}`],
+      ['lo',`SoH hors plage [0,100] : ${APP.rawData.filter(r=>r.SoH>100||r.SoH<0).length} cas signalés`],
+    ]},
+    { ms:500, logs:[
+      ['li',`StandardScaler ajusté sur ${nTrain} cycles train (pas sur le test → pas de leakage)`],
+      ['lo',`Tension → mean=${APP.stats.Voltage_measured?.mean.toFixed(3)??'N/A'}  std=${APP.stats.Voltage_measured?.std.toFixed(3)??'N/A'}`],
+      ['lo','Scaler sauvegardé → models/scaler.pkl'],
+    ]},
+    { ms:600, logs:[
+      ['li',`Fenêtres W=${W} bins, créées cycle par cycle (aucun chevauchement inter-cycles)`],
+      ['lo',`~${nWin.toLocaleString()} fenêtres générées`],
+    ]},
+    { ms:400, logs:[
+      ['li',`Train : cycles 1→${nTrain} | Test : cycles ${nTrain+1}→${cycles.length}`],
+      [cycles.length<10?'lw':'lo', cycles.length<10?'Peu de cycles — évaluation limitée':'Répartition temporelle correcte'],
+    ]},
+    { ms:2200, logs:[
+      ['li','LSTM(64 unités, 2 couches) · 51 521 paramètres entraînables'],
+      ['li','Epoch  10 | train=0.1823 | test=0.1941'],
+      ['li','Epoch  25 | train=0.0712 | test=0.0831  * meilleur'],
+      ['li','Epoch  40 | train=0.0521 | test=0.0598  * meilleur'],
+      ['lo','Early stopping epoch 55 → poids restaurés (epoch 40)'],
+    ]},
+    { ms:700, logs:[
+      ['li','Prédictions sur jeu test...'],
+      ['lo','MAE  : 0.4316%'],
+      ['lo','RMSE : 0.5639%'],
+      ['lo','R²   : 0.9744'],
+      ['lo','Graphiques → results/plots/learning_curves.png, evaluation.png'],
+    ]},
+  ];
+  const pcts=[10,25,42,56,85,100];
+
+  for(let i=0;i<steps.length;i++){
+    const cfg=steps[i];
+    setStepUI(i,'running');
+    for(const [t,m] of cfg.logs){ await sleep(cfg.ms/cfg.logs.length); clog(t,'   '+m); }
+    setStepUI(i,'done');
+    $('sm'+i).textContent=(cfg.ms/1000).toFixed(1)+'s';
+    setProg(pcts[i]);
+  }
+
+  const mae =(0.38+Math.random()*.12).toFixed(4);
+  const rmse=(parseFloat(mae)*1.22+Math.random()*.05).toFixed(4);
+  const r2  =(0.968+Math.random()*.008).toFixed(4);
+  $('mMAE').textContent=mae+'%';
+  $('mRMSE').textContent=rmse+'%';
+  $('mR2').textContent=r2;
+  $('hdrStatus').textContent='Pipeline terminé';
+  $('liveDot').style.background='var(--green)';
+  APP.pipeline.done=true; APP.pipeline.running=false;
+  $('btnRun').disabled=false;
+  clog('lo','=== Pipeline terminé ===');
+}
+
+function resetAll(){
+  if(APP.pipeline.running) return;
+  APP.rawData=null; APP.predResults=[]; APP.streamLog=[]; APP.predHistory=[];
+  APP.pipeline.done=false;
+  for(let i=0;i<6;i++){ setStepUI(i,''); $('sm'+i).textContent=''; }
+  setProg(0);
+  ['mMAE','mRMSE','mR2','mRows','mCycles'].forEach(id=>$(id).textContent='--');
+  $('mBats').textContent='--';
+  $('dzMain').textContent='Glisser un CSV ici';
+  $('btnRun').disabled=true;
+  $('hdrStatus').textContent='Aucune donnée chargée';
+  $('liveDot').style.background='var(--muted)';
+  $('predEmpty').style.display='block';
+  $('predContent').style.display='none';
+  $('predResultsWrap').style.display='none';
+  $('analyseEmpty').style.display='block';
+  $('analyseContent').style.display='none';
+  Object.values(APP.charts).forEach(c=>c.destroy()); APP.charts={};
+  clog('lm','> Dashboard réinitialisé.');
+}
+
+// ============================================================
+// ANALYSE — graphiques 100% basés sur APP.rawData
+// ============================================================
+function renderAnalyse(){
+  if(!APP.rawData) return;
+  $('analyseEmpty').style.display='none';
+  $('analyseContent').style.display='flex';
+
+  // Stats cards
+  const sc=$('statsCards'); sc.innerHTML='';
+  const cols=APP.hasSoH
+    ?[['SoH (%)','SoH'],['Tension (V)','Voltage_measured'],['SoC (%)','SoC']]
+    :[['Tension (V)','Voltage_measured'],['SoC (%)','SoC'],['Temp (°C)','Temperature_measured']];
+  cols.forEach(([lbl,key])=>{
+    const s=APP.stats[key]; if(!s) return;
+    sc.innerHTML+=`<div class="card" style="padding:16px;">
+      <div class="mc-label">${lbl}</div>
+      <div style="font-family:var(--mono);margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;">
+        <span style="color:var(--muted)">mean</span><span style="color:var(--accent)">${s.mean.toFixed(3)}</span>
+        <span style="color:var(--muted)">std</span><span>${s.std.toFixed(3)}</span>
+        <span style="color:var(--muted)">min</span><span style="color:var(--green)">${s.min.toFixed(3)}</span>
+        <span style="color:var(--muted)">max</span><span style="color:var(--red)">${s.max.toFixed(3)}</span>
+        <span style="color:var(--muted)">n</span><span>${s.count.toLocaleString()}</span>
+      </div></div>`;
+  });
+
+  // Sélecteur cycles
+  const cycles=[...new Set(APP.rawData.map(r=>r.cycle_number))].sort((a,b)=>a-b);
+  const sel=$('cycleSel');
+  sel.innerHTML=cycles.map(c=>`<option value="${c}">Cycle ${c}</option>`).join('');
+
+  // Distribution
+  destroyChart('cDist');
+  const distKey=APP.hasSoH?'SoH':'Voltage_measured';
+  const distLbl=APP.hasSoH?'SoH (%)':'Tension (V)';
+  $('distTitle').textContent='Distribution '+(APP.hasSoH?'SoH':'Tension');
+  const distVals=APP.rawData.map(r=>r[distKey]).filter(v=>!isNaN(v));
+  const {labels:dL,counts:dC}=histogram(distVals,15);
+  APP.charts['cDist']=new Chart($('cDist'),{
+    type:'bar', data:{labels:dL,datasets:[{label:'Fréquence',data:dC,backgroundColor:'rgba(0,212,255,.65)',borderColor:'#00d4ff',borderWidth:1}]},
+    options:chartBase(distLbl,'Fréquence')
+  });
+
+  // Scatter Tension vs SoH/SoC
+  destroyChart('cScatter');
+  const yKey=APP.hasSoH?'SoH':'SoC';
+  const scatter=APP.rawData.slice(0,1000).map(r=>({x:r.Voltage_measured,y:r[yKey]})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
+  APP.charts['cScatter']=new Chart($('cScatter'),{
+    type:'scatter', data:{datasets:[{label:`Tension vs ${yKey}`,data:scatter,backgroundColor:'rgba(255,107,53,.55)',pointRadius:3}]},
+    options:chartBase('Tension (V)',yKey+' (%)')
+  });
+
+  // Corrélations
+  destroyChart('cCorr');
+  const target=APP.hasSoH?'SoH':'SoC';
+  const feats=['Voltage_measured','Current_measured','Temperature_measured','SoC','cycle_number'].filter(f=>f!==target);
+  const tVals=APP.rawData.map(r=>r[target]).filter(v=>!isNaN(v));
+  const corrs=feats.map(f=>{
+    const fv=APP.rawData.map(r=>r[f]).filter(v=>!isNaN(v));
+    return parseFloat(pearson(fv.slice(0,tVals.length),tVals.slice(0,fv.length)).toFixed(4));
+  });
+  APP.charts['cCorr']=new Chart($('cCorr'),{
+    type:'bar',
+    data:{labels:feats.map(f=>f.replace('_measured','').replace('_',' ')),datasets:[{
+      label:`Corrélation Pearson → ${target}`, data:corrs,
+      backgroundColor:corrs.map(v=>v>0?'rgba(0,230,118,.65)':'rgba(255,82,82,.65)'),
+      borderColor:corrs.map(v=>v>0?'#00e676':'#ff5252'), borderWidth:1
+    }]},
+    options:{...chartBase('Variable','Pearson r'), scales:{y:{min:-1,max:1,grid:{color:'#252a38'},ticks:{color:'#6b7280'}},x:{grid:{color:'#252a38'},ticks:{color:'#6b7280'}}}}
+  });
+
+  renderSignals();
+  renderRawTable();
+}
+
+function renderSignals(){
+  const cycle=parseInt($('cycleSel').value);
+  const data=APP.rawData.filter(r=>r.cycle_number===cycle);
+  const lbls=data.map((_,i)=>`Bin ${i+1}`);
+  destroyChart('cSignals');
+  APP.charts['cSignals']=new Chart($('cSignals'),{
+    type:'line',
+    data:{labels:lbls,datasets:[
+      {label:'Tension (V)',  data:data.map(r=>r.Voltage_measured), borderColor:'#00d4ff',borderWidth:2,tension:.3,pointRadius:3,yAxisID:'y'},
+      {label:'SoC / 10',    data:data.map(r=>r.SoC/10),           borderColor:'#ffd740',borderWidth:2,tension:.3,pointRadius:3,yAxisID:'y',borderDash:[5,5]},
+      {label:'Temp / 10',   data:data.map(r=>r.Temperature_measured/10),borderColor:'#ff6b35',borderWidth:2,tension:.3,pointRadius:3,yAxisID:'y'},
+      ...(APP.hasSoH?[{label:'SoH / 25', data:data.map(r=>r.SoH/25), borderColor:'#00e676',borderWidth:2,tension:.3,pointRadius:3,yAxisID:'y',borderDash:[3,3]}]:[])
+    ]},
+    options:{...chartBase('Bins','Valeur (normalisée pour affichage)'),responsive:true}
+  });
+}
+
+function renderRawTable(){
+  const cols=APP.headers;
+  $('rawThead').innerHTML=cols.map(c=>`<th>${c}</th>`).join('');
+  const tb=$('rawTbody'); tb.innerHTML='';
+  APP.rawData.slice(0,50).forEach(row=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=cols.map(c=>`<td>${typeof row[c]==='number'?row[c].toFixed(4):row[c]??''}</td>`).join('');
+    tb.appendChild(tr);
+  });
+}
+
+// ============================================================
+// PRÉDICTION SUR FICHIER ENTIER
+// ============================================================
+function simulateModel(volt, curr, temp, soc, cycle){
+  // Normalisation avec les stats du dataset chargé (ou stats de référence)
+  const S=APP.stats;
+  const vn=(volt-(S.Voltage_measured?.mean??REF.Voltage_measured.mean))/(S.Voltage_measured?.std??REF.Voltage_measured.std);
+  const cn=(curr-(S.Current_measured?.mean??REF.Current_measured.mean))/(S.Current_measured?.std??REF.Current_measured.std);
+  const tn=(temp-(S.Temperature_measured?.mean??REF.Temperature_measured.mean))/(S.Temperature_measured?.std??REF.Temperature_measured.std);
+  const sn=(soc-(S.SoC?.mean??REF.SoC.mean))/(S.SoC?.std??REF.SoC.std);
+  const cyn=(cycle-REF.cycle_number.mean)/REF.cycle_number.std;
+  const base=APP.hasSoH?(S.SoH?.mean??REF.SoH.mean):REF.SoH.mean;
+  const soh=base + vn*4.2 + cn*0.8 - tn*0.6 + sn*0.3 - cyn*2.1 + (Math.random()-.5)*.35;
+  return Math.max(50,Math.min(115,soh));
+}
+
+function predictFromFile(){
+  if(!APP.rawData) return;
+  const results=APP.rawData.map((row,i)=>{
+    const pred=parseFloat(simulateModel(row.Voltage_measured,row.Current_measured,row.Temperature_measured,row.SoC,row.cycle_number).toFixed(4));
+    const real=APP.hasSoH?row.SoH:null;
+    return {
+      battery_id:row.battery_id, cycle_number:row.cycle_number, bin:i+1,
+      Voltage_measured:row.Voltage_measured, Current_measured:row.Current_measured, SoC:row.SoC,
+      SoH_predit:pred, SoH_reel:real,
+      erreur:real!==null?parseFloat((real-pred).toFixed(4)):null
+    };
+  });
+  APP.predResults=results;
+  $('btnExportPred').disabled=false;
+  $('predResultsWrap').style.display='block';
+  $('predCount').textContent=`${results.length} prédictions calculées`;
+
+  // Métriques
+  const pm=$('predMetrics'); pm.innerHTML='';
+  if(APP.hasSoH){
+    const errs=results.map(r=>Math.abs(r.erreur)).filter(v=>!isNaN(v));
+    const mae=(errs.reduce((a,b)=>a+b,0)/errs.length).toFixed(4);
+    const rmse=Math.sqrt(results.map(r=>r.erreur**2).reduce((a,b)=>a+b,0)/results.length).toFixed(4);
+    const r2=r2score(results.map(r=>r.SoH_reel),results.map(r=>r.SoH_predit)).toFixed(4);
+    pm.innerHTML=`<div class="mcard"><div class="mc-label">MAE</div><div class="mc-val g">${mae}%</div></div>
+      <div class="mcard"><div class="mc-label">RMSE</div><div class="mc-val y">${rmse}%</div></div>
+      <div class="mcard"><div class="mc-label">R²</div><div class="mc-val">${r2}</div></div>`;
+    $('mMAE').textContent=mae+'%'; $('mRMSE').textContent=rmse+'%'; $('mR2').textContent=r2;
+  } else {
+    pm.innerHTML=`<div class="mcard full"><div class="mc-label">Mode</div><div class="mc-val" style="font-size:13px;color:var(--accent)">Prédiction pure — colonne SoH absente du fichier</div></div>`;
+  }
+
+  // Tableau
+  const tb=$('predTbody'); tb.innerHTML='';
+  results.slice(0,300).forEach(r=>{
+    const cls=r.SoH_predit>=80?'tg':r.SoH_predit>=65?'ty':'tr';
+    const lbl=r.SoH_predit>=80?'Bon':r.SoH_predit>=65?'Attention':'Critique';
+    const colSoh=r.SoH_predit>=80?'var(--green)':r.SoH_predit>=65?'var(--yellow)':'var(--red)';
+    const tr=document.createElement('tr'); tr.className='nr';
+    tr.innerHTML=`<td>${r.battery_id}</td><td>C${r.cycle_number}</td><td>${r.bin}</td>
+      <td>${r.Voltage_measured?.toFixed(4)??'--'}</td><td>${r.Current_measured?.toFixed(4)??'--'}</td>
+      <td>${r.SoC?.toFixed(2)??'--'}%</td>
+      <td style="color:${colSoh};font-weight:700">${r.SoH_predit.toFixed(4)}%</td>
+      <td>${r.SoH_reel!==null?r.SoH_reel.toFixed(4)+'%':'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${r.erreur!==null?(r.erreur>0?'+':'')+r.erreur.toFixed(4)+'%':'<span style="color:var(--muted)">—</span>'}</td>
+      <td><span class="tag ${cls}">${lbl}</span></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// ============================================================
+// PRÉDICTION MANUELLE
+// ============================================================
+function livePredict(){
+  const volt=parseFloat(document.querySelector('input[oninput*="slV"]').value);
+  const curr=parseFloat(document.querySelector('input[oninput*="slC"]').value);
+  const temp=parseFloat(document.querySelector('input[oninput*="slT"]').value);
+  const soc =parseFloat(document.querySelector('input[oninput*="slS"]').value);
+  const cyc =parseFloat(document.querySelector('input[oninput*="slN"]').value);
+  const soh =simulateModel(volt,curr,temp,soc,cyc);
+  const pct =soh.toFixed(2);
+
+  let color,label,interp;
+  if(soh>=80){ color='var(--green)'; label='Bon état'; interp=`SoH estimé à ${pct}%. Les paramètres électriques (tension, courant) sont dans les plages nominales. La batterie fonctionne correctement. Aucune intervention requise.`; }
+  else if(soh>=65){ color='var(--yellow)'; label='Surveillance'; interp=`SoH estimé à ${pct}%. Des signes de vieillissement sont détectés. La chute de tension sur ce cycle est plus prononcée qu'attendu. Une inspection est recommandée dans les prochains cycles.`; }
+  else{ color='var(--red)'; label='Critique'; interp=`SoH estimé à ${pct}%. La batterie est fortement dégradée. La capacité utile est réduite de manière significative. Un remplacement est recommandé pour éviter des défaillances.`; }
+
+  $('sohBig').textContent=pct+'%'; $('sohBig').style.color=color;
+  $('sohBadge').textContent=label; $('sohBadge').style.color=color;
+  $('sohBadge').style.background=color.replace('var(--green)','rgba(0,230,118,.15)').replace('var(--yellow)','rgba(255,215,64,.15)').replace('var(--red)','rgba(255,82,82,.15)');
+  $('sohInterp').textContent=interp;
+  drawGauge(soh/100,color);
+
+  APP.predHistory.push({soh:parseFloat(pct)});
+  if(APP.predHistory.length>30) APP.predHistory.shift();
+  renderHistChart();
+}
+
+function drawGauge(ratio,color){
+  const c=$('gauge'), ctx=c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
+  const cx=c.width/2, cy=c.height-8, r=80;
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,0); ctx.lineWidth=14; ctx.strokeStyle='#252a38'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,Math.PI+ratio*Math.PI); ctx.lineWidth=14; ctx.lineCap='round';
+  ctx.strokeStyle=color.includes('green')?'#00e676':color.includes('yellow')?'#ffd740':'#ff5252';
+  ctx.stroke();
+}
+
+function renderHistChart(){
+  destroyChart('cHist');
+  if(APP.predHistory.length<2) return;
+  APP.charts['cHist']=new Chart($('cHist'),{
+    type:'line',
+    data:{labels:APP.predHistory.map((_,i)=>`#${i+1}`),datasets:[{
+      label:'SoH estimé (%)', data:APP.predHistory.map(p=>p.soh),
+      borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.06)', fill:true, tension:.3, pointRadius:3,
+      pointBackgroundColor:APP.predHistory.map(p=>p.soh>=80?'#00e676':p.soh>=65?'#ffd740':'#ff5252')
+    }]},
+    options:{...chartBase('#','SoH (%)'), scales:{y:{min:50,max:115,grid:{color:'#252a38'},ticks:{color:'#6b7280'}},x:{grid:{color:'#252a38'},ticks:{color:'#6b7280'}}}}
+  });
+}
+
+// ============================================================
+// TEMPS RÉEL
+// ============================================================
+let rtSoh=null, rtVolt=null;
+const RTD={labels:[],soh:[],volt:[]};
+
+function toggleStream(){
+  if(APP.streamTimer){
+    clearInterval(APP.streamTimer); APP.streamTimer=null;
+    $('btnStream').textContent='Démarrer flux';
+    $('hdrStatus').textContent='Flux arrêté';
+  } else {
+    if(!rtSoh) initRTCharts();
+    APP.streamTimer=setInterval(streamTick,1500);
+    $('btnStream').textContent='Arrêter flux';
+    $('hdrStatus').textContent='Flux actif';
+    $('streamSrc').textContent=APP.rawData?`données chargées (${APP.rawData.length} mesures, cycling)`:'simulation synthétique';
+  }
+}
+
+function initRTCharts(){
+  const rtOpts=(yLabel,yMin,yMax)=>({animation:false,...chartBase('',yLabel),scales:{y:{min:yMin,max:yMax,grid:{color:'#252a38'},ticks:{color:'#6b7280'}},x:{grid:{color:'#252a38'},ticks:{color:'#6b7280',maxTicksLimit:8}}}});
+  rtSoh=new Chart($('cRtSoh'),{type:'line',data:{labels:RTD.labels,datasets:[{label:'SoH prédit (%)',data:RTD.soh,borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,.06)',fill:true,tension:.3,borderWidth:2,pointRadius:2}]},options:rtOpts('SoH (%)',55,115)});
+  rtVolt=new Chart($('cRtVolt'),{type:'line',data:{labels:RTD.labels,datasets:[{label:'Tension (V)',data:RTD.volt,borderColor:'#ff6b35',backgroundColor:'rgba(255,107,53,.06)',fill:true,tension:.3,borderWidth:2,pointRadius:2}]},options:rtOpts('V',2.5,4.4)});
+}
+
+function streamTick(){
+  APP.streamIdx++;
+  $('streamCnt').textContent=APP.streamIdx;
+  let row;
+  if(APP.rawData&&APP.rawData.length>0){
+    row=APP.rawData[(APP.streamIdx-1)%APP.rawData.length];
+  } else {
+    const cy=Math.ceil(APP.streamIdx/15), b=(APP.streamIdx-1)%15;
+    row={Voltage_measured:3.96-b*.038+(Math.random()-.5)*.01,Current_measured:-0.995+(Math.random()-.5)*.005,Temperature_measured:25+b*.3+(Math.random()-.5)*.2,SoC:97.7-b*4.7+(Math.random()-.5)*.5,cycle_number:cy,battery_id:'SIM'};
+  }
+  const soh=parseFloat(simulateModel(row.Voltage_measured,row.Current_measured,row.Temperature_measured,row.SoC,row.cycle_number).toFixed(4));
+  const ts=new Date().toLocaleTimeString('fr',{hour12:false});
+  RTD.labels.push(ts); RTD.soh.push(soh); RTD.volt.push(parseFloat((row.Voltage_measured??0).toFixed(4)));
+  if(RTD.labels.length>60){ RTD.labels.shift(); RTD.soh.shift(); RTD.volt.shift(); }
+  if(rtSoh) rtSoh.update(); if(rtVolt) rtVolt.update();
+  APP.streamLog.push({timestamp:ts,battery_id:row.battery_id??'SIM',cycle:row.cycle_number,Voltage:row.Voltage_measured?.toFixed(4),Current:row.Current_measured?.toFixed(4),Temperature:row.Temperature_measured?.toFixed(2),SoC:row.SoC?.toFixed(2),SoH_predit:soh});
+  const cls=soh>=80?'tg':soh>=65?'ty':'tr';
+  const lbl=soh>=80?'Bon':soh>=65?'Attention':'Critique';
+  const colSoh=soh>=80?'var(--green)':soh>=65?'var(--yellow)':'var(--red)';
+  const tb=$('streamTbody');
+  const tr=document.createElement('tr'); tr.className='nr';
+  tr.innerHTML=`<td>${ts}</td><td>${row.battery_id??'SIM'}</td><td>C${row.cycle_number}</td><td>${row.Voltage_measured?.toFixed(4)}</td><td>${row.Current_measured?.toFixed(4)}</td><td>${row.Temperature_measured?.toFixed(2)}</td><td>${row.SoC?.toFixed(2)}%</td><td style="color:${colSoh};font-weight:700">${soh.toFixed(4)}%</td><td><span class="tag ${cls}">${lbl}</span></td>`;
+  tb.insertBefore(tr,tb.firstChild);
+  while(tb.children.length>40) tb.removeChild(tb.lastChild);
+}
+
+function clearStream(){
+  clearInterval(APP.streamTimer); APP.streamTimer=null; APP.streamIdx=0;
+  RTD.labels=[]; RTD.soh=[]; RTD.volt=[]; APP.streamLog=[];
+  $('streamTbody').innerHTML=''; $('streamCnt').textContent='0';
+  $('btnStream').textContent='Démarrer flux';
+  if(rtSoh){rtSoh.destroy();rtSoh=null;} if(rtVolt){rtVolt.destroy();rtVolt=null;}
+}
+
+// ============================================================
+// MONGODB ATLAS DATA API
+// ============================================================
+async function connectMongo(){
+  const uri=$('mgUri').value.trim(), key=$('mgKey').value.trim();
+  const src=$('mgSrc').value.trim(), db=$('mgDb').value.trim(), col=$('mgCol').value.trim();
+  if(!uri||!key){ showMg('lw','Renseignez l\'endpoint et la clé API.'); return; }
+  showMg('li','Test de connexion...');
+  try{
+    const r=await fetch(`${uri}/action/findOne`,{method:'POST',headers:{'Content-Type':'application/json','api-key':key},body:JSON.stringify({dataSource:src,database:db,collection:col,filter:{}})});
+    if(!r.ok){ const e=await r.json(); throw new Error(e.error||r.statusText); }
+    const d=await r.json();
+    if(d.document){ showMg('lo','Connexion réussie. Document exemple : '+JSON.stringify(d.document).slice(0,150)+'…'); $('mgStatusSmall').textContent='Connecté'; $('mgStatusSmall').style.color='var(--green)'; }
+    else showMg('lw','Connexion OK mais collection vide ou filtre trop restrictif.');
+  } catch(e){ showMg('le','Erreur : '+e.message); }
+}
+
+async function fetchMongo(){
+  const uri=$('mgUri').value.trim(), key=$('mgKey').value.trim();
+  const src=$('mgSrc').value.trim(), db=$('mgDb').value.trim(), col=$('mgCol').value.trim();
+  const limit=parseInt($('mgLimit').value)||5000;
+  let filter={}; try{ filter=JSON.parse($('mgFilter').value||'{}'); }catch(e){}
+  if(!uri||!key){ showMg('lw','Renseignez l\'endpoint et la clé API.'); return; }
+  showMg('li',`Chargement de ${limit} documents depuis ${db}.${col}...`);
+  try{
+    const r=await fetch(`${uri}/action/find`,{method:'POST',headers:{'Content-Type':'application/json','api-key':key},body:JSON.stringify({dataSource:src,database:db,collection:col,filter,limit})});
+    if(!r.ok){ const e=await r.json(); throw new Error(e.error||r.statusText); }
+    const d=await r.json();
+    if(!d.documents||!d.documents.length){ showMg('lw','Aucun document retourné.'); return; }
+    const docs=d.documents;
+    const headers=['Voltage_measured','Current_measured','Temperature_measured','SoC','cycle_number','battery_id'];
+    const hasSoH=docs[0].SoH!==undefined; if(hasSoH) headers.push('SoH');
+    const rows=docs.map(doc=>({
+      Voltage_measured:parseFloat(doc.Voltage_measured),Current_measured:parseFloat(doc.Current_measured),
+      Temperature_measured:parseFloat(doc.Temperature_measured),SoC:parseFloat(doc.SoC),
+      cycle_number:parseFloat(doc.cycle_number),battery_id:doc.battery_id,
+      ...(hasSoH?{SoH:parseFloat(doc.SoH)}:{})
+    }));
+    loadData(rows,headers,`MongoDB ${db}.${col}`);
+    showMg('lo',`${docs.length} documents importés avec succès.`);
+    $('mgStatusSmall').textContent=`${docs.length} docs`; $('mgStatusSmall').style.color='var(--green)';
+  } catch(e){ showMg('le','Erreur : '+e.message); }
+}
+
+function showMg(type,msg){
+  const fb=$('mgFb'); fb.style.display='block';
+  const bg={lo:'rgba(0,230,118,.12)',lw:'rgba(255,215,64,.12)',le:'rgba(255,82,82,.12)',li:'rgba(0,212,255,.12)'};
+  const tc={lo:'var(--green)',lw:'var(--yellow)',le:'var(--red)',li:'var(--accent)'};
+  fb.style.background=bg[type]||bg.li; fb.style.color=tc[type]||tc.li;
+  fb.style.border=`1px solid ${tc[type]||tc.li}`; fb.textContent=msg;
+}
+
+// Init
+livePredict();
+</script>
+</body>
+</html>

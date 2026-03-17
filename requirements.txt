@@ -1,0 +1,6 @@
+torch
+dash
+flask
+pandas
+numpy
+plotly
