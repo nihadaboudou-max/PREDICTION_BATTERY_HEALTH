@@ -1,211 +1,156 @@
-# =============================================================================
-# src/train.py
-# =============================================================================
-# Responsabilité : Gérer la boucle d'entraînement du modèle LSTM.
-#
-# Ce module contient :
-#   - La création des DataLoaders (mini-batches)
-#   - La boucle epoch par epoch (train + validation)
-#   - Le calcul de la loss à chaque étape
-#   - L'early stopping pour arrêter avant l'overfitting
-#   - La sauvegarde des courbes d'apprentissage
-#
-# CHOIX DE LA LOSS : MSE (Mean Squared Error)
-# --------------------------------------------
-# Pour un problème de régression, on minimise l'erreur quadratique.
-# Le MSE pénalise plus fortement les grandes erreurs (utile ici :
-# une erreur de 10% sur le SoH est bien plus grave qu'une erreur de 1%).
-#
-# OPTIMISEUR : Adam
-# -----------------
-# Adam est un optimiseur adaptatif qui ajuste le taux d'apprentissage
-# pour chaque paramètre. Il converge plus vite que le SGD classique
-# sur des données temporelles avec LSTM.
-# =============================================================================
+"""
+src/train.py
+Boucle d'entraînement avec early stopping et sauvegarde du meilleur modèle.
+"""
 
+import os
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from typing import Tuple, List
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
-def creer_dataloaders(
+def train_model(
+    model,
     X_train: np.ndarray,
     y_train: np.ndarray,
-    X_test: np.ndarray,
-    y_test: np.ndarray,
-    batch_size: int = 16
-) -> Tuple[DataLoader, DataLoader]:
+    X_val:   np.ndarray,
+    y_val:   np.ndarray,
+    lr:           float = 1e-3,
+    max_epochs:   int   = 100,
+    patience:     int   = 15,
+    batch_size:   int   = 64,
+    device:       str   = "cpu",
+    model_path:   str   = "models/lstm_soh.pth",
+    results_dir:  str   = "results/plots",
+) -> nn.Module:
     """
-    Convertit les arrays numpy en DataLoaders PyTorch.
+    Entraîne le modèle LSTM avec :
+      - Optimiseur Adam
+      - Loss MSE
+      - Early stopping sur la val loss
+      - Sauvegarde des meilleurs poids
 
-    Un DataLoader :
-    - Découpe les données en mini-batches de taille batch_size
-    - Mélange les données train à chaque epoch (shuffle=True)
-    - Gère la parallélisation (num_workers)
-
-    Paramètres
+    Parameters
     ----------
-    X_train, y_train : arrays numpy train
-    X_test, y_test   : arrays numpy test
-    batch_size       : nombre d'exemples par batch
+    model       : instance LSTMSoH
+    X_train     : (N_train, W, F) float32
+    y_train     : (N_train,)      float32
+    X_val       : (N_val, W, F)   float32
+    y_val       : (N_val,)        float32
+    lr          : learning rate Adam
+    max_epochs  : nombre maximum d'epochs
+    patience    : patience early stopping
+    batch_size  : taille des mini-batchs
+    device      : 'cpu' ou 'cuda'
+    model_path  : chemin de sauvegarde du meilleur modèle
+    results_dir : dossier de sortie pour les graphiques
 
-    Retourne
-    --------
-    (loader_train, loader_test) : deux DataLoaders PyTorch
+    Returns
+    -------
+    model chargé avec les meilleurs poids
     """
+    os.makedirs(os.path.dirname(model_path) or ".", exist_ok=True)
+    os.makedirs(results_dir, exist_ok=True)
 
-    # Conversion numpy → PyTorch tensors (float32 requis par le LSTM)
-    X_train_t = torch.FloatTensor(X_train)
-    y_train_t = torch.FloatTensor(y_train).unsqueeze(1)  # (N,) → (N, 1) pour correspondre à la sortie du modèle
-    X_test_t  = torch.FloatTensor(X_test)
-    y_test_t  = torch.FloatTensor(y_test).unsqueeze(1)
+    # ── DataLoaders ───────────────────────────────────────────────
+    def to_tensor(arr):
+        return torch.from_numpy(arr).float().to(device)
 
-    # TensorDataset associe X et y pour les itérer ensemble
-    dataset_train = TensorDataset(X_train_t, y_train_t)
-    dataset_test  = TensorDataset(X_test_t, y_test_t)
+    train_ds = TensorDataset(to_tensor(X_train), to_tensor(y_train))
+    val_ds   = TensorDataset(to_tensor(X_val),   to_tensor(y_val))
 
-    # shuffle=True sur le train : mélanger évite que le modèle
-    # apprenne l'ordre des exemples plutôt que les patterns réels
-    loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True)
-    loader_test  = DataLoader(dataset_test,  batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  drop_last=False)
+    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, drop_last=False)
 
-    print(f"[train] DataLoaders crees | batch={batch_size} | "
-          f"train: {len(loader_train)} batchs | test: {len(loader_test)} batchs")
-
-    return loader_train, loader_test
-
-
-def entrainer(
-    modele: nn.Module,
-    loader_train: DataLoader,
-    loader_test: DataLoader,
-    n_epochs: int = 100,
-    lr: float = 0.001,
-    patience: int = 15
-) -> dict:
-    """
-    Boucle d'entraînement principale avec early stopping.
-
-    EARLY STOPPING :
-    ----------------
-    Si la loss de validation ne s'améliore pas pendant `patience` epochs,
-    on arrête l'entraînement. Cela évite l'overfitting :
-    le modèle mémoriserait le train au détriment de la généralisation.
-    On restaure les meilleurs poids trouvés avant l'arrêt.
-
-    Paramètres
-    ----------
-    modele      : modèle LSTM PyTorch
-    loader_train : DataLoader d'entraînement
-    loader_test  : DataLoader de validation
-    n_epochs    : nombre maximum d'epochs
-    lr          : taux d'apprentissage initial
-    patience    : tolérance early stopping (epochs sans amélioration)
-
-    Retourne
-    --------
-    dict avec :
-        "train_losses"  : historique des losses train par epoch
-        "test_losses"   : historique des losses test par epoch
-        "best_epoch"    : epoch où la meilleure loss test a été atteinte
-    """
-
-    # Fonction de perte : MSE pour la régression
-    critere = nn.MSELoss()
-
-    # Optimiseur Adam avec weight_decay (régularisation L2 légère)
-    optimiseur = torch.optim.Adam(modele.parameters(), lr=lr, weight_decay=1e-5)
-
-    # Scheduler : réduit lr de moitié si la loss ne baisse plus pendant 10 epochs
-    # Aide à sortir des plateaux d'apprentissage
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimiseur, mode="min", patience=10, factor=0.5
+    # ── Optimiseur + Loss ─────────────────────────────────────────
+    optimizer  = torch.optim.Adam(model.parameters(), lr=lr)
+    criterion  = nn.MSELoss()
+    scheduler  = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.5, patience=7, verbose=False
     )
 
-    # Historique pour visualisation
-    train_losses: List[float] = []
-    test_losses: List[float]  = []
+    # ── Boucle d'entraînement ─────────────────────────────────────
+    train_losses, val_losses = [], []
+    best_val_loss  = float("inf")
+    patience_count = 0
 
-    # Variables pour l'early stopping
-    meilleure_loss_test = float("inf")
-    compteur_patience   = 0
-    meilleurs_poids     = None  # Sauvegarde en mémoire des meilleurs poids
-    meilleure_epoch     = 0
+    for epoch in range(1, max_epochs + 1):
+        # — Train —
+        model.train()
+        epoch_train_loss = 0.0
+        for X_batch, y_batch in train_loader:
+            optimizer.zero_grad()
+            pred = model(X_batch)
+            loss = criterion(pred, y_batch)
+            loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
+            epoch_train_loss += loss.item() * len(X_batch)
+        epoch_train_loss /= len(train_ds)
 
-    print(f"\n[train] Demarrage de l'entrainement")
-    print(f"   Epochs max : {n_epochs} | LR : {lr} | Patience : {patience}")
-    print(f"   {'Epoch':>6} | {'Loss Train':>12} | {'Loss Test':>12} | {'Statut'}")
-    print("   " + "-" * 50)
+        # — Validation —
+        model.eval()
+        epoch_val_loss = 0.0
+        with torch.no_grad():
+            for X_batch, y_batch in val_loader:
+                pred = model(X_batch)
+                loss = criterion(pred, y_batch)
+                epoch_val_loss += loss.item() * len(X_batch)
+        epoch_val_loss /= len(val_ds)
 
-    for epoch in range(1, n_epochs + 1):
+        train_losses.append(epoch_train_loss)
+        val_losses.append(epoch_val_loss)
+        scheduler.step(epoch_val_loss)
 
-        # ---- Phase TRAIN ----
-        modele.train()  # Active le dropout
-        loss_train_total = 0.0
+        # ─ Affichage ─
+        if epoch % 10 == 0 or epoch == 1:
+            print(f"      Epoch {epoch:3d}/{max_epochs} | "
+                  f"train={epoch_train_loss:.4f} | val={epoch_val_loss:.4f}"
+                  + (" ← meilleur" if epoch_val_loss < best_val_loss else ""))
 
-        for X_batch, y_batch in loader_train:
-            optimiseur.zero_grad()           # Remet les gradients à zéro
-            prediction = modele(X_batch)     # Passe avant
-            loss = critere(prediction, y_batch)  # Calcul de l'erreur
-            loss.backward()                  # Rétropropagation des gradients
-            nn.utils.clip_grad_norm_(modele.parameters(), max_norm=1.0)  # Clip gradients
-            optimiseur.step()                # Mise à jour des poids
-            loss_train_total += loss.item()
-
-        loss_train_moy = loss_train_total / len(loader_train)
-
-        # ---- Phase VALIDATION ----
-        modele.eval()   # Désactive le dropout
-        loss_test_total = 0.0
-
-        with torch.no_grad():  # Pas de gradients en validation = plus rapide
-            for X_batch, y_batch in loader_test:
-                prediction = modele(X_batch)
-                loss = critere(prediction, y_batch)
-                loss_test_total += loss.item()
-
-        loss_test_moy = loss_test_total / len(loader_test)
-
-        # Mise à jour du scheduler
-        scheduler.step(loss_test_moy)
-
-        # Sauvegarde des historiques
-        train_losses.append(loss_train_moy)
-        test_losses.append(loss_test_moy)
-
-        # ---- Early Stopping ----
-        if loss_test_moy < meilleure_loss_test:
-            meilleure_loss_test = loss_test_moy
-            meilleurs_poids     = {k: v.clone() for k, v in modele.state_dict().items()}
-            meilleure_epoch     = epoch
-            compteur_patience   = 0
-            statut = "* meilleur"
+        # ─ Early stopping ─
+        if epoch_val_loss < best_val_loss:
+            best_val_loss  = epoch_val_loss
+            patience_count = 0
+            torch.save(model.state_dict(), model_path)
         else:
-            compteur_patience += 1
-            statut = f"patience {compteur_patience}/{patience}"
+            patience_count += 1
+            if patience_count >= patience:
+                print(f"      Early stopping déclenché à l'epoch {epoch} "
+                      f"(patience={patience}).")
+                break
 
-        # Affichage tous les 10 epochs ou quand c'est le meilleur
-        if epoch % 10 == 0 or "meilleur" in statut:
-            print(f"   {epoch:>6} | {loss_train_moy:>12.6f} | "
-                  f"{loss_test_moy:>12.6f} | {statut}")
+    # ── Rechargement des meilleurs poids ─────────────────────────
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    print(f"      Meilleurs poids restaurés → {model_path}")
 
-        # Arrêt si patience dépassée
-        if compteur_patience >= patience:
-            print(f"\n[train] Early stopping a l'epoch {epoch} "
-                  f"(meilleur: epoch {meilleure_epoch})")
-            break
+    # ── Courbe d'apprentissage ────────────────────────────────────
+    _plot_learning_curves(train_losses, val_losses,
+                          os.path.join(results_dir, "learning_curves.png"))
 
-    # Restauration des meilleurs poids
-    if meilleurs_poids is not None:
-        modele.load_state_dict(meilleurs_poids)
-        print(f"[train] Poids restaures depuis l'epoch {meilleure_epoch}")
+    return model
 
-    print(f"[train] Entrainement termine | Meilleure loss test : {meilleure_loss_test:.6f}\n")
 
-    return {
-        "train_losses": train_losses,
-        "test_losses":  test_losses,
-        "best_epoch":   meilleure_epoch
-    }
+def _plot_learning_curves(train_losses, val_losses, save_path):
+    """Trace et sauvegarde les courbes train/val loss."""
+    fig, ax = plt.subplots(figsize=(8, 4), facecolor="#0d0f14")
+    ax.set_facecolor("#141720")
+    epochs = range(1, len(train_losses) + 1)
+    ax.plot(epochs, train_losses, color="#00d4ff", linewidth=1.5, label="Train Loss")
+    ax.plot(epochs, val_losses,   color="#00e676", linewidth=1.5, linestyle="--", label="Val Loss")
+    ax.set_xlabel("Epoch", color="#6b7280")
+    ax.set_ylabel("MSE Loss", color="#6b7280")
+    ax.set_title("Courbes d'apprentissage", color="#e8ecf4")
+    ax.legend(facecolor="#1c2030", edgecolor="#252a38", labelcolor="#e8ecf4")
+    ax.tick_params(colors="#6b7280")
+    for spine in ax.spines.values():
+        spine.set_edgecolor("#252a38")
+    ax.grid(color="#252a38", linewidth=0.5)
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    plt.close()
+    print(f"      Courbes d'apprentissage → {save_path}")
