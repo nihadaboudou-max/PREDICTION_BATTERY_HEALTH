@@ -6,7 +6,6 @@ services:
     name: battery-soh-api
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python api_server.py
     envVars:
       - key: FLASK_ENV
         value: production
