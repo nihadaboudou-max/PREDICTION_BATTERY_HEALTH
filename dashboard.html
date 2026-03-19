@@ -918,8 +918,32 @@ function renderRawTable(){
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MODÈLE : simulation d'inférence LSTM
+// API RENDER — inférence réelle
 // ═══════════════════════════════════════════════════════════════
+const API_URL = "https://prediction-battery-health.onrender.com";
+
+async function callAPI(volt, curr, temp, soc){
+  try {
+    const seq = [
+      [volt-0.04, curr+0.02, temp-0.7, soc],
+      [volt-0.02, curr+0.01, temp-0.3, soc],
+      [volt,      curr,      temp,     soc]
+    ];
+    const res = await fetch(API_URL+'/predict', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({sequence: seq})
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    return parseFloat(data.soh);
+  } catch(e) {
+    console.warn('API indisponible, fallback local:', e.message);
+    return simulateModel(volt, curr, temp, soc, 50);
+  }
+}
+
+// Fallback local si API hors ligne (cold start Render ~30s)
 function simulateModel(volt, curr, temp, soc, cycle){
   const S=APP.stats;
   const vn=(volt-(S.Voltage_measured?.mean??REF.Voltage_measured.mean))/(S.Voltage_measured?.std??REF.Voltage_measured.std);
@@ -984,14 +1008,15 @@ function predictFromFile(){
 // ═══════════════════════════════════════════════════════════════
 // PRÉDICTION MANUELLE + JAUGE + FENÊTRE LSTM
 // ═══════════════════════════════════════════════════════════════
-function livePredict(){
+async function livePredict(){
   const sliders=document.querySelectorAll('#tab-prediction input[type=range]');
   const volt=parseFloat(sliders[0].value);
   const curr=parseFloat(sliders[1].value);
   const temp=parseFloat(sliders[2].value);
   const soc =parseFloat(sliders[3].value);
   const cyc =parseFloat(sliders[4].value);
-  const soh=simulateModel(volt,curr,temp,soc,cyc);
+  $('sohBig').textContent='...'; $('lstmOut').textContent='...';
+  const soh=await callAPI(volt,curr,temp,soc);
   const pct=soh.toFixed(2);
 
   // Mise à jour fenêtre LSTM (bins t-2, t-1, t)
@@ -1352,6 +1377,16 @@ function showMg(type,msg){
 // ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
+// Vérification API au démarrage
+fetch(API_URL+'/health').then(r=>r.json()).then(d=>{
+  const dot=document.getElementById('liveDot');
+  const lbl=document.getElementById('hdrStatus');
+  dot.classList.add('active');
+  lbl.textContent='API connectée — '+API_URL.replace('https://','');
+  lbl.style.color='var(--green)';
+}).catch(()=>{
+  document.getElementById('hdrStatus').textContent='API hors ligne — mode local';
+});
 livePredict();
 </script>
 </body>
