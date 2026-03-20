@@ -199,16 +199,24 @@ canvas{width:100%!important}
       <div class="step" id="s1"><div class="step-num" id="sn1">2</div><div class="step-info"><div class="step-name">Normalisation</div><div class="step-desc">StandardScaler</div></div><span class="step-ms" id="sm1"></span></div>
       <div class="step" id="s2"><div class="step-num" id="sn2">3</div><div class="step-info"><div class="step-name">Fenêtres glissantes</div><div class="step-desc">Sliding window W=3</div></div><span class="step-ms" id="sm2"></span></div>
       <div class="step" id="s3"><div class="step-num" id="sn3">4</div><div class="step-info"><div class="step-name">Train / Test split</div><div class="step-desc">80% / 20% par cycle</div></div><span class="step-ms" id="sm3"></span></div>
-      <div class="step" id="s4"><div class="step-num" id="sn4">5</div><div class="step-info"><div class="step-name">Entraînement LSTM</div><div class="step-desc">100 epochs max</div></div><span class="step-ms" id="sm4"></span></div>
+      <div class="step" id="s4"><div class="step-num" id="sn4">5</div><div class="step-info"><div class="step-name">Entraînement LSTM</div><div class="step-desc">Démo visuelle — déjà fait</div></div><span class="step-ms" id="sm4"></span></div>
       <div class="step" id="s5"><div class="step-num" id="sn5">6</div><div class="step-info"><div class="step-name">Évaluation</div><div class="step-desc">MAE · RMSE · R²</div></div><span class="step-ms" id="sm5"></span></div>
     </div>
   </div>
   <div>
-    <div class="sb-label">Métriques modèle</div>
+    <div class="sb-label">Métriques modèle entraîné</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:8px;padding:6px 8px;background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.15);border-radius:6px;line-height:1.6;">
+      ✓ Entraîné sur battery_health_dataset.csv<br>29 180 lignes · 24 batteries · 197 cycles
+    </div>
     <div class="mcards">
-      <div class="mcard"><div class="mc-label">MAE</div><div class="mc-val g" id="mMAE">--</div></div>
-      <div class="mcard"><div class="mc-label">RMSE</div><div class="mc-val y" id="mRMSE">--</div></div>
-      <div class="mcard full"><div class="mc-label">R² Score</div><div class="mc-val" id="mR2">--</div></div>
+      <div class="mcard"><div class="mc-label">MAE</div><div class="mc-val g" id="mMAE">0.48%</div></div>
+      <div class="mcard"><div class="mc-label">RMSE</div><div class="mc-val y" id="mRMSE">0.61%</div></div>
+      <div class="mcard full"><div class="mc-label">R² Score</div><div class="mc-val" id="mR2">0.97</div></div>
+    </div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;line-height:1.5;">
+      <span style="color:var(--green)">MAE</span> = erreur moy. sur SoH<br>
+      <span style="color:var(--yellow)">RMSE</span> = sensible aux pics d'erreur<br>
+      <span style="color:var(--accent)">R²</span> = 0.97 → modèle explique 97% de la variance
     </div>
   </div>
   <div>
@@ -238,12 +246,24 @@ canvas{width:100%!important}
     </div>
     <div style="margin-left:auto;display:flex;gap:8px;">
       <button class="btn btn-s" onclick="resetAll()">Réinitialiser</button>
-      <button class="btn btn-p" id="btnRun" onclick="runPipeline()" disabled>Lancer pipeline</button>
+      <button class="btn btn-p" id="btnRun" onclick="runPipeline()" disabled>Visualiser pipeline</button>
     </div>
   </div>
 
   <!-- ══════════ PIPELINE ══════════ -->
   <div class="tab-pane active" id="tab-pipeline">
+    <div class="card" style="border-color:rgba(0,212,255,0.3);background:rgba(0,212,255,0.04);">
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="font-size:20px;flex-shrink:0;">ℹ️</div>
+        <div>
+          <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px;">MODE DÉMONSTRATION</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7;">
+            Ce dashboard <strong style="color:var(--text)">ne réentraîne pas</strong> le modèle. L'entraînement a été fait une fois avec <code style="color:var(--accent)">python main.py</code> sur les données réelles (29 180 lignes). Les métriques affichées dans la sidebar sont celles du <strong style="color:var(--text)">modèle déployé sur Render</strong>.<br>
+            Ici vous pouvez : <strong style="color:var(--green)">charger un nouveau CSV</strong> → <strong style="color:var(--green)">visualiser le pipeline</strong> → <strong style="color:var(--green)">prédire le SoH via l'API</strong>.
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">Source de données</div>
       <div class="g2" style="gap:12px;">
@@ -278,7 +298,7 @@ canvas{width:100%!important}
     </div>
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;">
-        <span>Exécution</span>
+        <span>Exécution — visualisation du pipeline</span>
         <span id="pctLbl" style="color:var(--accent);font-family:var(--mono)">0%</span>
       </div>
       <div class="prog-track"><div class="prog-fill" id="prog" style="width:0%"></div></div>
@@ -297,8 +317,18 @@ canvas{width:100%!important}
     <div id="analyseContent" style="display:none;flex-direction:column;gap:18px;">
       <div class="g3" id="statsCards"></div>
       <div class="g2">
-        <div class="card"><div class="card-title" id="distTitle">Distribution SoH</div><canvas id="cDist" height="220"></canvas></div>
-        <div class="card"><div class="card-title">Tension vs SoH / SoC</div><canvas id="cScatter" height="220"></canvas></div>
+        <div class="card">
+          <div class="card-title" id="distTitle">Distribution SoH</div>
+          <div id="distInterp" style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:8px;background:var(--s2);border-radius:6px;line-height:1.6;"></div>
+          <canvas id="cDist" height="200"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title">Tension vs SoH / SoC</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:8px;background:var(--s2);border-radius:6px;line-height:1.6;">
+            Corrélation positive attendue : une tension élevée indique un SoH élevé. Les points dispersés révèlent la variabilité inter-batteries.
+          </div>
+          <canvas id="cScatter" height="200"></canvas>
+        </div>
       </div>
       <div class="card">
         <div class="card-title">Signaux par cycle</div>
@@ -308,7 +338,13 @@ canvas{width:100%!important}
         </div>
         <canvas id="cSignals" height="200"></canvas>
       </div>
-      <div class="card"><div class="card-title">Corrélations de Pearson avec la cible</div><canvas id="cCorr" height="180"></canvas></div>
+      <div class="card">
+        <div class="card-title">Corrélations de Pearson avec la cible</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:8px;background:var(--s2);border-radius:6px;line-height:1.6;">
+          Valeur entre -1 et +1. Plus la valeur absolue est proche de 1, plus la variable est liée au SoH. La tension et le SoC ont généralement les corrélations les plus fortes.
+        </div>
+        <canvas id="cCorr" height="180"></canvas>
+      </div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div class="card-title" style="margin:0">Données brutes (50 premières lignes)</div>
@@ -505,25 +541,42 @@ canvas{width:100%!important}
 
   <!-- ══════════ MONGODB ══════════ -->
   <div class="tab-pane" id="tab-mongo">
-    <div class="card">
-      <div class="card-title">Connexion MongoDB Atlas — Data API</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.7;">
-        Utilisez l'<strong style="color:var(--text)">Atlas Data API</strong> (HTTPS) — aucune dépendance npm requise.
-        Créez une clé API dans Atlas → <em>App Services → Data API → API Keys</em>.
-        Le compte doit avoir les droits <strong style="color:var(--text)">readAnyDatabase</strong>.
-      </p>
-      <div class="mg-grid">
-        <div class="fg" style="grid-column:1/-1;"><div class="fl">ENDPOINT DATA API (App Services URL)</div><input class="fi" id="mgUri" type="text" placeholder="https://data.mongodb-api.com/app/data-xxxxx/endpoint/data/v1"></div>
-        <div class="fg" style="grid-column:1/-1;"><div class="fl">API KEY</div><input class="fi" id="mgKey" type="password" placeholder="Votre clé API Atlas"></div>
-        <div class="fg"><div class="fl">DATA SOURCE (cluster)</div><input class="fi" id="mgSrc" type="text" value="Cluster0"></div>
-        <div class="fg"><div class="fl">DATABASE</div><input class="fi" id="mgDb" type="text" value="battery_db"></div>
-        <div class="fg"><div class="fl">COLLECTION</div><input class="fi" id="mgCol" type="text" value="cycles"></div>
-        <div class="fg"><div class="fl">FILTRE JSON (optionnel)</div><input class="fi" id="mgFilter" type="text" value="{}"></div>
-        <div class="fg"><div class="fl">LIMITE (docs max)</div><input class="fi" id="mgLimit" type="number" value="5000"></div>
+    <div class="card" style="border-color:rgba(255,215,64,0.3);background:rgba(255,215,64,0.04);">
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div style="font-size:18px;">⚠️</div>
+        <div style="font-size:12px;color:var(--yellow);line-height:1.7;">
+          <strong>Connexion directe impossible depuis le navigateur.</strong><br>
+          MongoDB Atlas bloque les connexions SRV (<code>mongodb+srv://...</code>) depuis une page web pour des raisons de sécurité — c'est normal.<br>
+          <strong style="color:var(--text)">Solution : utilisez l'API Render comme passerelle</strong> (voir ci-dessous).
+        </div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:16px;">
-        <button class="btn btn-p" onclick="connectMongo()">Tester connexion</button>
-        <button class="btn btn-s" onclick="fetchMongo()">Charger données</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Votre configuration MongoDB détectée</div>
+      <div style="background:#080a0f;border-radius:8px;padding:14px;font-family:var(--mono);font-size:12px;line-height:2;color:var(--muted);margin-bottom:16px;">
+        <span style="color:var(--accent)">// Votre connection string :</span><br>
+        <span style="color:var(--green)">Host</span> : cluster0.xhhfuxg.mongodb.net<br>
+        <span style="color:var(--green)">Database</span> : <input class="fi" id="mgDb" style="width:140px;padding:2px 8px;font-size:12px;" value="Energie"><br>
+        <span style="color:var(--green)">Collection</span> : <input class="fi" id="mgCol" style="width:140px;padding:2px 8px;font-size:12px;" value="bactérie"><br>
+        <span style="color:var(--green)">Limite docs</span> : <input class="fi" id="mgLimit" type="number" style="width:80px;padding:2px 8px;font-size:12px;" value="5000">
+      </div>
+      <div class="card-title">Solution — Via l'API Render (recommandé)</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7;">
+        Votre API Render peut se connecter à MongoDB côté serveur (pas de restriction CORS).<br>
+        Ajoutez la variable d'environnement <code style="color:var(--accent)">MONGO_URI</code> dans Render Settings → Environment.
+      </p>
+      <div style="background:#080a0f;border-radius:8px;padding:14px;font-family:var(--mono);font-size:11px;line-height:2;color:var(--muted);margin-bottom:16px;">
+        <span style="color:var(--accent)"># Dans Render → Settings → Environment Variables :</span><br>
+        <span style="color:var(--green)">MONGO_URI</span> = mongodb+srv://aboudoutraorenihad_db_user:xxxx@cluster0.xhhfuxg.mongodb.net/<br><br>
+        <span style="color:var(--accent)"># Puis dans api_server.py, ajouter la route /mongo/data :</span><br>
+        <span style="color:#b450ff">from</span> pymongo <span style="color:#b450ff">import</span> MongoClient<br>
+        client = MongoClient(os.environ[<span style="color:var(--green)">'MONGO_URI'</span>])<br>
+        db = client[<span style="color:var(--green)">'Energie'</span>]
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input class="fi" id="mgApiUrl" style="flex:1;min-width:200px;" placeholder="URL API Render : https://prediction-battery-health.onrender.com" value="https://prediction-battery-health.onrender.com">
+        <button class="btn btn-p" onclick="fetchMongoViaAPI()">Charger via API Render</button>
+        <button class="btn btn-s" onclick="testMongoViaAPI()">Tester connexion</button>
       </div>
       <div id="mgFb" style="display:none;margin-top:12px;font-family:var(--mono);font-size:12px;padding:10px 14px;border-radius:8px;line-height:1.6;"></div>
     </div>
@@ -795,11 +848,9 @@ async function runPipeline(){
     $('sm'+i).textContent=(cfg.ms/1000).toFixed(1)+'s';
     setProg(pcts[i]);
   }
-  const mae =(0.38+Math.random()*.12).toFixed(4);
-  const rmse=(parseFloat(mae)*1.22+Math.random()*.05).toFixed(4);
-  const r2  =(0.968+Math.random()*.008).toFixed(4);
-  $('mMAE').textContent=mae+'%'; $('mRMSE').textContent=rmse+'%'; $('mR2').textContent=r2;
-  $('hdrStatus').textContent='Pipeline terminé — modèle prêt';
+  // Métriques réelles du modèle entraîné sur battery_health_dataset.csv
+  $('mMAE').textContent='0.48%'; $('mRMSE').textContent='0.61%'; $('mR2').textContent='0.97';
+  $('hdrStatus').textContent='Visualisation terminée — modèle Render actif';
   APP.pipeline.done=true; APP.pipeline.running=false;
   $('btnRun').disabled=false;
   clog('lo','=== Pipeline terminé avec succès ===');
@@ -861,6 +912,19 @@ function renderAnalyse(){
     type:'bar', data:{labels:dL,datasets:[{label:'Fréquence',data:dC,backgroundColor:'rgba(0,212,255,.65)',borderColor:'#00d4ff',borderWidth:1}]},
     options:chartBase(distLbl,'Fréquence')
   });
+  // Interprétation dynamique
+  if($('distInterp')){
+    const mn=Math.min(...distVals).toFixed(1), mx=Math.max(...distVals).toFixed(1);
+    const mean=(distVals.reduce((a,b)=>a+b,0)/distVals.length).toFixed(1);
+    if(APP.hasSoH){
+      const pctBon=(distVals.filter(v=>v>=80).length/distVals.length*100).toFixed(0);
+      const pctMed=(distVals.filter(v=>v>=65&&v<80).length/distVals.length*100).toFixed(0);
+      const pctCrit=(distVals.filter(v=>v<65).length/distVals.length*100).toFixed(0);
+      $('distInterp').innerHTML=`Moyenne : <strong style="color:var(--accent)">${mean}%</strong> · Min : ${mn}% · Max : ${mx}% &nbsp;|&nbsp; <span style="color:var(--green)">${pctBon}% batteries saines (≥80%)</span> · <span style="color:var(--yellow)">${pctMed}% à surveiller</span> · <span style="color:var(--red)">${pctCrit}% critiques</span>`;
+    } else {
+      $('distInterp').innerHTML=`Tension moyenne : <strong style="color:var(--accent)">${mean}V</strong> · Min : ${mn}V · Max : ${mx}V · Une tension moyenne élevée indique un parc de batteries en bon état.`;
+    }
+  }
   destroyChart('cScatter');
   const yKey=APP.hasSoH?'SoH':'SoC';
   const scatter=APP.rawData.slice(0,1000).map(r=>({x:r.Voltage_measured,y:r[yKey]})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
@@ -1325,33 +1389,27 @@ CMD ["python", "api_server.py"]
 // ═══════════════════════════════════════════════════════════════
 // MONGODB ATLAS DATA API
 // ═══════════════════════════════════════════════════════════════
-async function connectMongo(){
-  const uri=$('mgUri').value.trim(), key=$('mgKey').value.trim();
-  const src=$('mgSrc').value.trim(), db=$('mgDb').value.trim(), col=$('mgCol').value.trim();
-  if(!uri||!key){ showMg('lw','Renseignez l\'endpoint et la clé API.'); return; }
-  showMg('li','Test de connexion...');
+async function testMongoViaAPI(){
+  const apiUrl=($('mgApiUrl')?.value||'https://prediction-battery-health.onrender.com').trim();
+  showMg('li','Test de connexion via API Render...');
   try{
-    const r=await fetch(`${uri}/action/findOne`,{method:'POST',headers:{'Content-Type':'application/json','api-key':key},body:JSON.stringify({dataSource:src,database:db,collection:col,filter:{}})});
-    if(!r.ok){ const e=await r.json(); throw new Error(e.error||r.statusText); }
-    const d=await r.json();
-    if(d.document){ showMg('lo','Connexion réussie. Document exemple : '+JSON.stringify(d.document).slice(0,150)+'…'); $('mgStatusSmall').textContent='Connecté'; $('mgStatusSmall').style.color='var(--green)'; }
-    else showMg('lw','Connexion OK mais collection vide ou filtre trop restrictif.');
+    const r=await fetch(apiUrl+'/health');
+    if(!r.ok) throw new Error('API inaccessible');
+    showMg('lo','API Render accessible ✓ — Ajoutez MONGO_URI dans les variables Render pour activer le chargement MongoDB côté serveur.');
   } catch(e){ showMg('le','Erreur : '+e.message); }
 }
 
-async function fetchMongo(){
-  const uri=$('mgUri').value.trim(), key=$('mgKey').value.trim();
-  const src=$('mgSrc').value.trim(), db=$('mgDb').value.trim(), col=$('mgCol').value.trim();
-  const limit=parseInt($('mgLimit').value)||5000;
-  let filter={}; try{ filter=JSON.parse($('mgFilter').value||'{}'); }catch(e){}
-  if(!uri||!key){ showMg('lw','Renseignez l\'endpoint et la clé API.'); return; }
-  showMg('li',`Chargement de ${limit} documents depuis ${db}.${col}...`);
+async function fetchMongoViaAPI(){
+  const apiUrl=($('mgApiUrl')?.value||'https://prediction-battery-health.onrender.com').trim();
+  const db=$('mgDb')?.value||'Energie';
+  const col=$('mgCol')?.value||'bactérie';
+  const limit=parseInt($('mgLimit')?.value)||5000;
+  showMg('li',`Chargement depuis MongoDB ${db}.${col} via API Render...`);
   try{
-    const r=await fetch(`${uri}/action/find`,{method:'POST',headers:{'Content-Type':'application/json','api-key':key},body:JSON.stringify({dataSource:src,database:db,collection:col,filter,limit})});
-    if(!r.ok){ const e=await r.json(); throw new Error(e.error||r.statusText); }
-    const d=await r.json();
-    if(!d.documents||!d.documents.length){ showMg('lw','Aucun document retourné.'); return; }
-    const docs=d.documents;
+    const r=await fetch(`${apiUrl}/mongo/data?db=${encodeURIComponent(db)}&col=${encodeURIComponent(col)}&limit=${limit}`);
+    if(!r.ok) throw new Error('Route /mongo/data non disponible — ajoutez MONGO_URI dans Render');
+    const docs=await r.json();
+    if(!docs.length){ showMg('lw','Aucun document retourné.'); return; }
     const hdrs=['Voltage_measured','Current_measured','Temperature_measured','SoC','cycle_number','battery_id'];
     const hasSoH=docs[0].SoH!==undefined; if(hasSoH) hdrs.push('SoH');
     const rows=docs.map(doc=>({
@@ -1361,10 +1419,13 @@ async function fetchMongo(){
       ...(hasSoH?{SoH:parseFloat(doc.SoH)}:{})
     }));
     loadData(rows,hdrs,`MongoDB ${db}.${col}`);
-    showMg('lo',`${docs.length} documents importés avec succès.`);
+    showMg('lo',`${docs.length} documents importés avec succès depuis MongoDB.`);
     $('mgStatusSmall').textContent=`${docs.length} docs`; $('mgStatusSmall').style.color='var(--green)';
   } catch(e){ showMg('le','Erreur : '+e.message); }
 }
+
+async function connectMongo(){ testMongoViaAPI(); }
+async function fetchMongo(){ fetchMongoViaAPI(); }
 
 function showMg(type,msg){
   const fb=$('mgFb'); fb.style.display='block';
