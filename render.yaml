@@ -1,12 +1,12 @@
-# render.yaml — Configuration de déploiement Render
-# Placez ce fichier à la racine du dépôt GitHub
-
 services:
   - type: web
     name: battery-soh-api
     runtime: python
     buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn api_server:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
       - key: FLASK_ENV
         value: production
       - key: HIDDEN_SIZE
@@ -17,5 +17,3 @@ services:
         value: models/lstm_soh.pth
       - key: SCALER_PATH
         value: models/scaler.pkl
-    # Le port est injecté automatiquement par Render via $PORT
-    # Ne jamais définir un port fixe ici
