@@ -11,3 +11,4 @@ flask
 fastapi
 uvicorn
 tensorflow==2.15.0
+pymongo>=4.6.0
