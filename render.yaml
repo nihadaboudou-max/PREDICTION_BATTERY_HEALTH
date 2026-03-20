@@ -6,6 +6,7 @@ services:
     name: battery-soh-api
     runtime: python
     buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn api_server:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
     envVars:
       - key: FLASK_ENV
         value: production
@@ -17,5 +18,7 @@ services:
         value: models/lstm_soh.pth
       - key: SCALER_PATH
         value: models/scaler.pkl
+      - key: PYTHON_VERSION
+        value: "3.11.0"  
     # Le port est injecté automatiquement par Render via $PORT
     # Ne jamais définir un port fixe ici
