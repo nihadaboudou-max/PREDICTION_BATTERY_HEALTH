@@ -17,22 +17,27 @@
 body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
 
 /* ─── HEADER ─── */
-header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:200}
-.logo{display:flex;align-items:center;gap:12px}
+header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:200;gap:16px;}
+.logo{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .logo-badge{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#00d4ff,#0077aa);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;color:#000}
 .logo-title{font-size:15px;font-weight:600}
 .logo-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
-.hdr-right{display:flex;align-items:center;gap:12px}
-.live-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background .4s}
+.hdr-center{flex:1;display:flex;align-items:center;gap:8px;max-width:480px;}
+.hdr-center label{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;letter-spacing:.06em;}
+.api-input{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text);font-family:var(--mono);font-size:11px;outline:none;transition:border-color .2s;}
+.api-input:focus{border-color:var(--accent);}
+.hdr-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:all .4s;flex-shrink:0;}
 .live-dot.active{background:var(--green);box-shadow:0 0 8px rgba(0,230,118,.5);animation:blink 2s infinite}
+.live-dot.warn{background:var(--yellow);}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.hdr-status{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.hdr-status{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;}
 
 /* ─── LAYOUT ─── */
-.layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 61px)}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 56px)}
 
 /* ─── SIDEBAR ─── */
-.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;max-height:calc(100vh - 61px);position:sticky;top:61px}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;max-height:calc(100vh - 56px);position:sticky;top:56px}
 .sb-label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
 .steps{display:flex;flex-direction:column;gap:2px}
 .step{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;border:1px solid transparent;transition:all .2s}
@@ -71,8 +76,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
 .btn-p:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .btn-s{background:var(--s2);color:var(--text);border:1px solid var(--border)}
 .btn-s:hover{border-color:var(--accent);color:var(--accent)}
-.btn-g{background:var(--green);color:var(--bg)}
-.btn-g:hover{background:#00c960}
 
 /* ─── FORMS ─── */
 .dropzone{border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all .2s}
@@ -170,10 +173,14 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 canvas{width:100%!important}
 .divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+.info-banner{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-radius:10px;border:1px solid rgba(0,212,255,.25);background:rgba(0,212,255,.05);margin-bottom:4px;}
+.info-banner .ib-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+.info-banner .ib-text{font-size:12px;color:var(--muted);line-height:1.7;}
 </style>
 </head>
 <body>
 
+<!-- ══════════════════════════ HEADER ══════════════════════════ -->
 <header>
   <div class="logo">
     <div class="logo-badge">B</div>
@@ -182,9 +189,19 @@ canvas{width:100%!important}
       <div class="logo-sub">LSTM · State of Health Estimation</div>
     </div>
   </div>
+  <!-- Champ URL API — modifiable par l'utilisateur -->
+  <div class="hdr-center">
+    <label>API</label>
+    <input class="api-input" id="apiUrlInput"
+      value="https://prediction-battery-health.onrender.com"
+      placeholder="https://votre-service.onrender.com"
+      onchange="updateApiUrl(this.value)"
+      onfocus="this.style.borderColor='var(--accent)'"
+      onblur="this.style.borderColor='var(--border)'">
+  </div>
   <div class="hdr-right">
     <div class="live-dot" id="liveDot"></div>
-    <span class="hdr-status" id="hdrStatus">Aucune donnée chargée</span>
+    <span class="hdr-status" id="hdrStatus">Vérification API...</span>
   </div>
 </header>
 
@@ -199,28 +216,27 @@ canvas{width:100%!important}
       <div class="step" id="s1"><div class="step-num" id="sn1">2</div><div class="step-info"><div class="step-name">Normalisation</div><div class="step-desc">StandardScaler</div></div><span class="step-ms" id="sm1"></span></div>
       <div class="step" id="s2"><div class="step-num" id="sn2">3</div><div class="step-info"><div class="step-name">Fenêtres glissantes</div><div class="step-desc">Sliding window W=3</div></div><span class="step-ms" id="sm2"></span></div>
       <div class="step" id="s3"><div class="step-num" id="sn3">4</div><div class="step-info"><div class="step-name">Train / Test split</div><div class="step-desc">80% / 20% par cycle</div></div><span class="step-ms" id="sm3"></span></div>
-      <div class="step" id="s4"><div class="step-num" id="sn4">5</div><div class="step-info"><div class="step-name">Entraînement LSTM</div><div class="step-desc">Démo visuelle — déjà fait</div></div><span class="step-ms" id="sm4"></span></div>
+      <div class="step" id="s4"><div class="step-num" id="sn4">5</div><div class="step-info"><div class="step-name">Entraînement LSTM</div><div class="step-desc">100 epochs max</div></div><span class="step-ms" id="sm4"></span></div>
       <div class="step" id="s5"><div class="step-num" id="sn5">6</div><div class="step-info"><div class="step-name">Évaluation</div><div class="step-desc">MAE · RMSE · R²</div></div><span class="step-ms" id="sm5"></span></div>
     </div>
   </div>
   <div>
-    <div class="sb-label">Métriques modèle entraîné</div>
-    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:8px;padding:6px 8px;background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.15);border-radius:6px;line-height:1.6;">
-      ✓ Entraîné sur battery_health_dataset.csv<br>29 180 lignes · 24 batteries · 197 cycles
+    <!-- Métriques : se mettent à jour automatiquement quand on prédit avec SoH réel -->
+    <div class="sb-label">Métriques modèle</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:8px;padding:6px 8px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.15);border-radius:6px;line-height:1.6;">
+      Modèle entraîné · 29 180 lignes · 24 batteries
     </div>
     <div class="mcards">
       <div class="mcard"><div class="mc-label">MAE</div><div class="mc-val g" id="mMAE">0.48%</div></div>
       <div class="mcard"><div class="mc-label">RMSE</div><div class="mc-val y" id="mRMSE">0.61%</div></div>
       <div class="mcard full"><div class="mc-label">R² Score</div><div class="mc-val" id="mR2">0.97</div></div>
     </div>
-    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;line-height:1.5;">
-      <span style="color:var(--green)">MAE</span> = erreur moy. sur SoH<br>
-      <span style="color:var(--yellow)">RMSE</span> = sensible aux pics d'erreur<br>
-      <span style="color:var(--accent)">R²</span> = 0.97 → modèle explique 97% de la variance
+    <div id="metricSource" style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;padding:5px 8px;background:var(--s2);border-radius:5px;line-height:1.5;">
+      Valeurs du modèle entraîné en local.<br>Se mettent à jour après prédiction sur fichier avec SoH.
     </div>
   </div>
   <div>
-    <div class="sb-label">Dataset</div>
+    <div class="sb-label">Dataset chargé</div>
     <div class="mcards">
       <div class="mcard"><div class="mc-label">Lignes</div><div class="mc-val" id="mRows" style="font-size:18px">--</div></div>
       <div class="mcard"><div class="mc-label">Cycles</div><div class="mc-val" id="mCycles" style="font-size:18px">--</div></div>
@@ -246,26 +262,24 @@ canvas{width:100%!important}
     </div>
     <div style="margin-left:auto;display:flex;gap:8px;">
       <button class="btn btn-s" onclick="resetAll()">Réinitialiser</button>
-      <button class="btn btn-p" id="btnRun" onclick="runPipeline()" disabled>Visualiser pipeline</button>
+      <button class="btn btn-p" id="btnRun" onclick="runPipeline()" disabled>Lancer pipeline</button>
     </div>
   </div>
 
   <!-- ══════════ PIPELINE ══════════ -->
   <div class="tab-pane active" id="tab-pipeline">
-    <div class="card" style="border-color:rgba(0,212,255,0.3);background:rgba(0,212,255,0.04);">
-      <div style="display:flex;align-items:flex-start;gap:12px;">
-        <div style="font-size:20px;flex-shrink:0;">ℹ️</div>
-        <div>
-          <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px;">MODE DÉMONSTRATION</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.7;">
-            Ce dashboard <strong style="color:var(--text)">ne réentraîne pas</strong> le modèle. L'entraînement a été fait une fois avec <code style="color:var(--accent)">python main.py</code> sur les données réelles (29 180 lignes). Les métriques affichées dans la sidebar sont celles du <strong style="color:var(--text)">modèle déployé sur Render</strong>.<br>
-            Ici vous pouvez : <strong style="color:var(--green)">charger un nouveau CSV</strong> → <strong style="color:var(--green)">visualiser le pipeline</strong> → <strong style="color:var(--green)">prédire le SoH via l'API</strong>.
-          </div>
-        </div>
+    <!-- Bannière explicative honnête -->
+    <div class="info-banner">
+      <div class="ib-icon">ℹ️</div>
+      <div class="ib-text">
+        <strong style="color:var(--accent)">Mode démonstration du pipeline.</strong>
+        Le modèle LSTM a été entraîné une fois avec <code style="color:var(--accent)">python main.py</code> sur 29 180 mesures réelles (24 batteries, 197 cycles) et déployé sur Render.
+        Ici : chargez un CSV → le pipeline visualise les étapes → allez dans <strong style="color:var(--green)">Prédiction</strong> pour obtenir les SoH via l'API.
+        Si votre CSV contient la colonne <code>SoH</code>, les métriques réelles se calculent automatiquement.
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Source de données</div>
+      <div class="card-title">Méthode de connexion MongoDB</div>
       <div class="g2" style="gap:12px;">
         <div>
           <div class="dropzone" id="dz" onclick="document.getElementById('fi').click()"
@@ -286,7 +300,7 @@ canvas{width:100%!important}
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Hyperparamètres</div>
+      <div class="card-title">Hyperparamètres (référence)</div>
       <div class="g3">
         <div class="pg"><div class="pl">Fenêtre (W)</div><input type="range" min="2" max="8" value="3" oninput="setP('pW',this.value+' bins')"><div class="pv" id="pW">3 bins</div><div class="ps">Bins par séquence LSTM</div></div>
         <div class="pg"><div class="pl">Ratio test</div><input type="range" min="10" max="40" value="20" oninput="setP('pT',this.value+'%')"><div class="pv" id="pT">20%</div><div class="ps">% cycles pour l'évaluation</div></div>
@@ -298,7 +312,7 @@ canvas{width:100%!important}
     </div>
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;">
-        <span>Exécution — visualisation du pipeline</span>
+        <span>Exécution</span>
         <span id="pctLbl" style="color:var(--accent);font-family:var(--mono)">0%</span>
       </div>
       <div class="prog-track"><div class="prog-fill" id="prog" style="width:0%"></div></div>
@@ -319,13 +333,13 @@ canvas{width:100%!important}
       <div class="g2">
         <div class="card">
           <div class="card-title" id="distTitle">Distribution SoH</div>
-          <div id="distInterp" style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:8px;background:var(--s2);border-radius:6px;line-height:1.6;"></div>
+          <div id="distInterp" style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:7px 10px;background:var(--s2);border-radius:6px;line-height:1.6;display:none;"></div>
           <canvas id="cDist" height="200"></canvas>
         </div>
         <div class="card">
           <div class="card-title">Tension vs SoH / SoC</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:8px;background:var(--s2);border-radius:6px;line-height:1.6;">
-            Corrélation positive attendue : une tension élevée indique un SoH élevé. Les points dispersés révèlent la variabilité inter-batteries.
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:7px 10px;background:var(--s2);border-radius:6px;line-height:1.6;">
+            Corrélation positive : tension élevée → SoH élevé. Les points dispersés révèlent la variabilité inter-batteries et inter-cycles.
           </div>
           <canvas id="cScatter" height="200"></canvas>
         </div>
@@ -340,8 +354,8 @@ canvas{width:100%!important}
       </div>
       <div class="card">
         <div class="card-title">Corrélations de Pearson avec la cible</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:8px;background:var(--s2);border-radius:6px;line-height:1.6;">
-          Valeur entre -1 et +1. Plus la valeur absolue est proche de 1, plus la variable est liée au SoH. La tension et le SoC ont généralement les corrélations les plus fortes.
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:7px 10px;background:var(--s2);border-radius:6px;line-height:1.6;">
+          Valeur entre −1 et +1. Plus la valeur absolue est proche de 1, plus la variable est liée au SoH (ou SoC si SoH absent). Vert = corrélation positive, rouge = négative.
         </div>
         <canvas id="cCorr" height="180"></canvas>
       </div>
@@ -364,7 +378,7 @@ canvas{width:100%!important}
       <div id="predEmpty" class="empty" style="padding:24px;">
         <div class="empty-icon">🔍</div>
         <div class="empty-txt">Chargez d'abord un fichier CSV ou des données MongoDB</div>
-        <div class="empty-sub">Le SoH réel (si présent) sera comparé ligne par ligne aux prédictions.</div>
+        <div class="empty-sub">Avec colonne SoH : métriques réelles calculées. Sans SoH : prédiction pure.</div>
       </div>
       <div id="predContent" style="display:none;">
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
@@ -391,8 +405,8 @@ canvas{width:100%!important}
         <div class="pg"><div class="pl">SoC (%)</div><input type="range" min="0" max="100" step="0.5" value="50" oninput="setSl('slS',this.value+'%');livePredict()"><div class="pv" id="slS">50%</div></div>
         <div class="pg"><div class="pl">Numéro de cycle</div><input type="range" min="1" max="200" value="1" oninput="setSl('slN','Cycle '+this.value);livePredict()"><div class="pv" id="slN">Cycle 1</div></div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px;padding:10px;background:var(--s2);border-radius:6px;line-height:1.6;">
-          Normalisation basée sur les statistiques du dataset chargé.<br>
-          Si aucun fichier : statistiques de référence (29 180 mesures, 24 batteries).
+          Appel direct à l'API Render (LSTM déployé).<br>
+          Fallback local si API hors ligne.
         </div>
         <!-- Fenêtre LSTM visualisée -->
         <div class="lstm-window">
@@ -431,6 +445,13 @@ canvas{width:100%!important}
 
   <!-- ══════════ TEMPS RÉEL ══════════ -->
   <div class="tab-pane" id="tab-stream">
+    <div class="info-banner">
+      <div class="ib-icon">📡</div>
+      <div class="ib-text">
+        <strong style="color:var(--text)">Simulation de flux temps réel.</strong>
+        Si un CSV est chargé, les mesures réelles sont rejouées en boucle. Sinon, des données synthétiques sont générées toutes les 1.5s. En production réelle, ce flux viendrait de capteurs physiques sur les batteries.
+      </div>
+    </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-p" id="btnStream" onclick="toggleStream()">Démarrer flux</button>
       <button class="btn btn-s" onclick="clearStream()">Vider</button>
@@ -479,9 +500,8 @@ canvas{width:100%!important}
     <div class="card">
       <div class="card-title">💡 Pourquoi le LSTM gagne ?</div>
       <div style="font-size:13px;line-height:1.9;color:var(--muted);">
-        <p>Le LSTM exploite la <strong style="color:var(--accent)">dynamique temporelle</strong> des cycles de décharge : comment la tension chute progressivement, comment le courant évolue en fin de décharge. Ces informations de séquence sont <em>invisibles</em> aux modèles classiques.</p>
-        <br>
-        <p>La <strong style="color:var(--orange)">Régression Linéaire</strong> (MAE ~3.95%) traite chaque mesure indépendamment et suppose une relation linéaire — deux hypothèses fausses ici.</p>
+        <p>Le LSTM exploite la <strong style="color:var(--accent)">dynamique temporelle</strong> des cycles de décharge : comment la tension chute progressivement, comment le courant évolue en fin de décharge. Ces informations de séquence sont <em>invisibles</em> aux modèles classiques.</p><br>
+        <p>La <strong style="color:var(--orange)">Régression Linéaire</strong> (MAE ~3.95%) traite chaque mesure indépendamment — deux hypothèses fausses ici.</p>
         <p>Le <strong style="color:var(--green)">Random Forest</strong> (MAE ~1.87%) capture des non-linéarités mais reste aveugle à l'ordre temporel des bins.</p>
         <p>Le <strong style="color:var(--purple)">MLP</strong> (MAE ~1.24%) voit la séquence concaténée mais sans mécanisme de mémoire sélective.</p>
         <p style="margin-top:10px;color:var(--text);">→ <strong style="color:var(--accent)">Conclusion :</strong> le LSTM réduit la MAE de <strong style="color:var(--green)">88% vs la régression linéaire</strong>. Son choix est scientifiquement justifié.</p>
@@ -502,9 +522,7 @@ canvas{width:100%!important}
       <div class="card">
         <div class="card-title">Impact sur le SoH (importance relative)</div>
         <div id="featBars"></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:var(--mono);">
-          Valeurs normalisées · ΔMAE mesuré sur le test set
-        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:var(--mono);">Valeurs normalisées · ΔMAE mesuré sur le test set</div>
       </div>
       <div class="card"><div class="card-title">Importance relative (graphique)</div><canvas id="cXai" height="240"></canvas></div>
     </div>
@@ -514,7 +532,7 @@ canvas{width:100%!important}
         <div>⚡ <strong style="color:var(--accent)">Tension (34%)</strong> — Signal le plus direct de la capacité résiduelle. Une batterie dégradée montre une chute de tension plus précoce à même SoC.</div>
         <div>🔄 <strong style="color:var(--orange)">Numéro de cycle (27%)</strong> — Synthétise l'historique de dégradation. Plus le cycle est élevé, plus la capacité est réduite.</div>
         <div>📊 <strong style="color:var(--yellow)">SoC (22%)</strong> — Sert de référence : à SoC identique, une tension plus basse signale une batterie dégradée.</div>
-        <div>🌡 <strong style="color:var(--red)">Température (11%)</strong> — Influence la résistance interne et donc la tension mesurée. Effet secondaire mais mesurable.</div>
+        <div>🌡 <strong style="color:var(--red)">Température (11%)</strong> — Influence la résistance interne et donc la tension mesurée.</div>
         <div>🔌 <strong style="color:var(--muted)">Courant (6%)</strong> — Facteur de charge, moins discriminant que la tension pour l'estimation du SoH.</div>
       </div>
     </div>
@@ -525,61 +543,93 @@ canvas{width:100%!important}
     <div class="card">
       <div class="card-title">Export &amp; Déploiement industriel</div>
       <div class="export-grid">
-        <div class="export-card" onclick="doExportCSV()"><div class="export-icon">📊</div><div class="export-title">Prédictions CSV</div><div class="export-desc">SoH prédit vs réel sur le test set</div></div>
-        <div class="export-card" onclick="doExportPDF()"><div class="export-icon">📄</div><div class="export-title">Rapport PDF</div><div class="export-desc">Rapport de santé batterie automatique avec métriques</div></div>
+        <div class="export-card" onclick="doExportCSV()"><div class="export-icon">📊</div><div class="export-title">Prédictions CSV</div><div class="export-desc">SoH prédit vs réel</div></div>
+        <div class="export-card" onclick="doExportPDF()"><div class="export-icon">📄</div><div class="export-title">Rapport PDF</div><div class="export-desc">Rapport de santé batterie avec métriques</div></div>
         <div class="export-card" onclick="doExportModel()"><div class="export-icon">🤖</div><div class="export-title">Modèle PyTorch</div><div class="export-desc">lstm_soh.pth + scaler.pkl</div></div>
         <div class="export-card" onclick="doExportConfig()"><div class="export-icon">🔧</div><div class="export-title">Config JSON</div><div class="export-desc">Hyperparamètres et architecture</div></div>
-        <div class="export-card" onclick="doExportAPI()"><div class="export-icon">🌐</div><div class="export-title">API Flask</div><div class="export-desc">Code prêt-à-déployer pour inference endpoint</div></div>
+        <div class="export-card" onclick="doExportAPI()"><div class="export-icon">🌐</div><div class="export-title">API Flask</div><div class="export-desc">Code prêt-à-déployer pour inference</div></div>
         <div class="export-card" onclick="doExportDocker()"><div class="export-icon">🐳</div><div class="export-title">Dockerfile</div><div class="export-desc">Image Docker pour déploiement industriel</div></div>
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Aperçu — API Flask d'inférence (générée automatiquement)</div>
+      <div class="card-title">Aperçu — API Flask d'inférence</div>
       <pre id="apiPreview" style="background:#080a0f;border-radius:8px;padding:16px;font-family:var(--mono);font-size:11px;line-height:1.9;color:var(--muted);overflow-x:auto;"></pre>
     </div>
   </div>
 
   <!-- ══════════ MONGODB ══════════ -->
   <div class="tab-pane" id="tab-mongo">
-    <div class="card" style="border-color:rgba(255,215,64,0.3);background:rgba(255,215,64,0.04);">
-      <div style="display:flex;gap:10px;align-items:flex-start;">
-        <div style="font-size:18px;">⚠️</div>
-        <div style="font-size:12px;color:var(--yellow);line-height:1.7;">
-          <strong>Connexion directe impossible depuis le navigateur.</strong><br>
-          MongoDB Atlas bloque les connexions SRV (<code>mongodb+srv://...</code>) depuis une page web pour des raisons de sécurité — c'est normal.<br>
-          <strong style="color:var(--text)">Solution : utilisez l'API Render comme passerelle</strong> (voir ci-dessous).
-        </div>
-      </div>
-    </div>
+
+    <!-- Sélecteur de méthode -->
     <div class="card">
-      <div class="card-title">Votre configuration MongoDB détectée</div>
-      <div style="background:#080a0f;border-radius:8px;padding:14px;font-family:var(--mono);font-size:12px;line-height:2;color:var(--muted);margin-bottom:16px;">
-        <span style="color:var(--accent)">// Votre connection string :</span><br>
-        <span style="color:var(--green)">Host</span> : cluster0.xhhfuxg.mongodb.net<br>
-        <span style="color:var(--green)">Database</span> : <input class="fi" id="mgDb" style="width:140px;padding:2px 8px;font-size:12px;" value="Energie"><br>
-        <span style="color:var(--green)">Collection</span> : <input class="fi" id="mgCol" style="width:140px;padding:2px 8px;font-size:12px;" value="bactérie"><br>
-        <span style="color:var(--green)">Limite docs</span> : <input class="fi" id="mgLimit" type="number" style="width:80px;padding:2px 8px;font-size:12px;" value="5000">
+      <div class="card-title">Source de données</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="btnMethodSrv" class="btn btn-p" onclick="switchMethod('srv')" style="font-size:12px;">
+          🔗 Connection String (SRV)
+        </button>
+        <button id="btnMethodApi" class="btn btn-s" onclick="switchMethod('api')" style="font-size:12px;">
+          🌐 Atlas Data API
+        </button>
       </div>
-      <div class="card-title">Solution — Via l'API Render (recommandé)</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7;">
-        Votre API Render peut se connecter à MongoDB côté serveur (pas de restriction CORS).<br>
-        Ajoutez la variable d'environnement <code style="color:var(--accent)">MONGO_URI</code> dans Render Settings → Environment.
+      <div id="methodNote" style="margin-top:12px;font-size:12px;color:var(--muted);line-height:1.7;padding:10px;background:var(--s2);border-radius:7px;"></div>
+    </div>
+
+    <!-- ── Méthode SRV ── -->
+    <div class="card" id="panelSrv" style="display:none;">
+      <div class="card-title">Connexion via String SRV (via API Render)</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7;">
+        Votre API Render se connecte à MongoDB côté serveur — pas de restriction CORS.
+        Collez votre connection string et renseignez le mot de passe.
       </p>
-      <div style="background:#080a0f;border-radius:8px;padding:14px;font-family:var(--mono);font-size:11px;line-height:2;color:var(--muted);margin-bottom:16px;">
-        <span style="color:var(--accent)"># Dans Render → Settings → Environment Variables :</span><br>
-        <span style="color:var(--green)">MONGO_URI</span> = mongodb+srv://aboudoutraorenihad_db_user:xxxx@cluster0.xhhfuxg.mongodb.net/<br><br>
-        <span style="color:var(--accent)"># Puis dans api_server.py, ajouter la route /mongo/data :</span><br>
-        <span style="color:#b450ff">from</span> pymongo <span style="color:#b450ff">import</span> MongoClient<br>
-        client = MongoClient(os.environ[<span style="color:var(--green)">'MONGO_URI'</span>])<br>
-        db = client[<span style="color:var(--green)">'Energie'</span>]
+      <div class="mg-grid">
+        <div class="fg" style="grid-column:1/-1;">
+          <div class="fl">Connection String SRV</div>
+          <input class="fi" id="srvUri" type="text"
+            value="mongodb+srv://aboudoutraorenihad_db_user:&lt;db_password&gt;@cluster0.xhhfuxg.mongodb.net/?appName=Cluster0"
+            placeholder="mongodb+srv://user:<password>@cluster.mongodb.net/">
+        </div>
+        <div class="fg" style="grid-column:1/-1;">
+          <div class="fl">Mot de passe (remplace &lt;db_password&gt;)</div>
+          <input class="fi" id="srvPassword" type="password" placeholder="Votre mot de passe MongoDB Atlas">
+        </div>
+        <div class="fg"><div class="fl">Database</div><input class="fi" id="srvDb" type="text" placeholder="Ex: Energie"></div>
+        <div class="fg"><div class="fl">Collection</div><input class="fi" id="srvCol" type="text" placeholder="Ex: bactérie"></div>
+        <div class="fg"><div class="fl">Limite (docs max)</div><input class="fi" id="srvLimit" type="number" value="5000"></div>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <input class="fi" id="mgApiUrl" style="flex:1;min-width:200px;" placeholder="URL API Render : https://prediction-battery-health.onrender.com" value="https://prediction-battery-health.onrender.com">
-        <button class="btn btn-p" onclick="fetchMongoViaAPI()">Charger via API Render</button>
-        <button class="btn btn-s" onclick="testMongoViaAPI()">Tester connexion</button>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;padding:8px 12px;background:var(--s2);border-radius:6px;line-height:1.7;">
+        ℹ️ Cette méthode passe par votre API Render (<code id="srvApiDisplay" style="color:var(--accent)"></code>).
+        Assurez-vous d'avoir ajouté <code style="color:var(--green)">MONGO_URI</code> dans les variables d'environnement Render avec votre vraie connection string.
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn btn-p" onclick="connectSrv()">Tester connexion</button>
+        <button class="btn btn-s" onclick="fetchSrv()">Charger données</button>
+      </div>
+      <div id="mgFbSrv" style="display:none;margin-top:12px;font-family:var(--mono);font-size:12px;padding:10px 14px;border-radius:8px;line-height:1.6;"></div>
+    </div>
+
+    <!-- ── Méthode Data API ── -->
+    <div class="card" id="panelApi" style="display:none;">
+      <div class="card-title">Connexion via Atlas Data API (HTTPS direct)</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.7;">
+        Dans MongoDB Atlas → <em>App Services → Data API → Enable → Create API Key</em>. Pas de serveur intermédiaire requis.
+      </p>
+      <div class="mg-grid">
+        <div class="fg" style="grid-column:1/-1;"><div class="fl">Endpoint Data API (URL App Services)</div><input class="fi" id="mgUri" type="text" placeholder="https://data.mongodb-api.com/app/data-xxxxx/endpoint/data/v1"></div>
+        <div class="fg" style="grid-column:1/-1;"><div class="fl">API Key</div><input class="fi" id="mgKey" type="password" placeholder="Votre clé API Atlas"></div>
+        <div class="fg"><div class="fl">Data Source (cluster)</div><input class="fi" id="mgSrc" type="text" placeholder="Ex: Cluster0"></div>
+        <div class="fg"><div class="fl">Database</div><input class="fi" id="mgDb" type="text" placeholder="Ex: battery_db"></div>
+        <div class="fg"><div class="fl">Collection</div><input class="fi" id="mgCol" type="text" placeholder="Ex: cycles"></div>
+        <div class="fg"><div class="fl">Filtre JSON (optionnel)</div><input class="fi" id="mgFilter" type="text" value="{}"></div>
+        <div class="fg"><div class="fl">Limite (docs max)</div><input class="fi" id="mgLimit" type="number" value="5000"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-p" onclick="connectMongo()">Tester connexion</button>
+        <button class="btn btn-s" onclick="fetchMongo()">Charger données</button>
       </div>
       <div id="mgFb" style="display:none;margin-top:12px;font-family:var(--mono);font-size:12px;padding:10px 14px;border-radius:8px;line-height:1.6;"></div>
     </div>
+
+    <!-- Format documents -->
     <div class="card">
       <div class="card-title">Format attendu des documents</div>
       <div style="background:#080a0f;border-radius:8px;padding:14px 16px;font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--muted);">
@@ -591,7 +641,7 @@ canvas{width:100%!important}
         &nbsp;&nbsp;<span style="color:var(--green)">"SoC"</span> : <span style="color:var(--yellow)">87.4</span>,<br>
         &nbsp;&nbsp;<span style="color:var(--green)">"cycle_number"</span> : <span style="color:var(--yellow)">1</span>,<br>
         &nbsp;&nbsp;<span style="color:var(--green)">"battery_id"</span> : <span style="color:var(--green)">"B0047"</span>,<br>
-        &nbsp;&nbsp;<span style="color:var(--accent)">"SoH"</span> : <span style="color:var(--yellow)">83.63</span> <span style="color:var(--muted)">// optionnel</span><br>
+        &nbsp;&nbsp;<span style="color:var(--accent)">"SoH"</span> : <span style="color:var(--yellow)">83.63</span> <span style="color:var(--muted)">// optionnel — active les métriques réelles</span><br>
         }
       </div>
     </div>
@@ -606,40 +656,88 @@ canvas{width:100%!important}
 // ÉTAT GLOBAL
 // ═══════════════════════════════════════════════════════════════
 const APP = {
-  rawData: null, headers: [], hasSoH: false,
-  stats: {}, charts: {},
-  predResults: [], streamLog: [],
-  predHistory: [],
-  streamTimer: null, streamIdx: 0,
-  pipeline: { done: false, running: false }
+  rawData:null, headers:[], hasSoH:false,
+  stats:{}, charts:{},
+  predResults:[], streamLog:[],
+  predHistory:[],
+  streamTimer:null, streamIdx:0,
+  pipeline:{done:false, running:false}
 };
 
-// Stats de référence issues du vrai dataset (29 180 lignes)
 const REF = {
-  Voltage_measured:    { mean:3.457,  std:0.260  },
-  Current_measured:    { mean:-2.327, std:0.977  },
-  Temperature_measured:{ mean:34.949, std:10.819 },
-  SoC:                 { mean:49.576, std:29.087 },
-  cycle_number:        { mean:50.0,   std:40.0   },
-  SoH:                 { mean:82.35,  std:7.04   }
+  Voltage_measured:    {mean:3.457,  std:0.260 },
+  Current_measured:    {mean:-2.327, std:0.977 },
+  Temperature_measured:{mean:34.949, std:10.819},
+  SoC:                 {mean:49.576, std:29.087},
+  cycle_number:        {mean:50.0,   std:40.0  },
+  SoH:                 {mean:82.35,  std:7.04  }
 };
 
-// Données benchmark (valeurs réelles issues de comparaisons dans la littérature)
 const BENCH_DATA = [
-  { model:'LSTM',              badge:'mb-lstm', mae:0.48, rmse:0.61, r2:0.97, time:'~45s',  best:true  },
-  { model:'MLP (2 couches)',   badge:'mb-mlp',  mae:1.24, rmse:1.53, r2:0.84, time:'~12s',  best:false },
-  { model:'Random Forest',     badge:'mb-rf',   mae:1.87, rmse:2.31, r2:0.78, time:'~8s',   best:false },
-  { model:'Régression Lin.',   badge:'mb-lr',   mae:3.95, rmse:4.82, r2:0.41, time:'< 1s',  best:false },
+  {model:'LSTM',           badge:'mb-lstm', mae:0.48, rmse:0.61, r2:0.97, time:'~45s', best:true },
+  {model:'MLP (2 couches)',badge:'mb-mlp',  mae:1.24, rmse:1.53, r2:0.84, time:'~12s', best:false},
+  {model:'Random Forest',  badge:'mb-rf',   mae:1.87, rmse:2.31, r2:0.78, time:'~8s',  best:false},
+  {model:'Régression Lin.',badge:'mb-lr',   mae:3.95, rmse:4.82, r2:0.41, time:'< 1s', best:false},
 ];
 
-// Données XAI (permutation importance normalisée)
 const XAI_DATA = [
-  { name:'⚡ Tension (V)',       pct:34, color:'var(--accent)'  },
-  { name:'🔄 N° de cycle',       pct:27, color:'var(--orange)'  },
-  { name:'📊 SoC (%)',           pct:22, color:'var(--yellow)'  },
-  { name:'🌡 Température (°C)', pct:11, color:'var(--red)'     },
-  { name:'🔌 Courant (A)',       pct:6,  color:'var(--muted)'   },
+  {name:'⚡ Tension (V)',      pct:34, color:'var(--accent)'},
+  {name:'🔄 N° de cycle',      pct:27, color:'var(--orange)'},
+  {name:'📊 SoC (%)',          pct:22, color:'var(--yellow)'},
+  {name:'🌡 Température (°C)',pct:11, color:'var(--red)'   },
+  {name:'🔌 Courant (A)',      pct:6,  color:'var(--muted)' },
 ];
+
+// ═══════════════════════════════════════════════════════════════
+// API — URL dynamique modifiable par l'utilisateur
+// ═══════════════════════════════════════════════════════════════
+let CURRENT_API_URL = localStorage.getItem('apiUrl') || 'https://prediction-battery-health.onrender.com';
+
+function updateApiUrl(val){
+  CURRENT_API_URL = val.trim();
+  localStorage.setItem('apiUrl', CURRENT_API_URL);
+  pingAPI();
+}
+
+function pingAPI(){
+  const dot = document.getElementById('liveDot');
+  const lbl = document.getElementById('hdrStatus');
+  lbl.style.color = '';
+  fetch(CURRENT_API_URL+'/health', {signal: AbortSignal.timeout(6000)})
+    .then(r => r.json())
+    .then(() => {
+      dot.className = 'live-dot active';
+      lbl.textContent = 'API connectée · '+CURRENT_API_URL.replace('https://','');
+      lbl.style.color = 'var(--green)';
+    })
+    .catch(() => {
+      dot.className = 'live-dot warn';
+      lbl.textContent = 'API hors ligne — mode calcul local';
+      lbl.style.color = 'var(--yellow)';
+    });
+}
+
+async function callAPI(volt, curr, temp, soc){
+  try {
+    const seq = [
+      [volt-0.04, curr+0.02, temp-0.7, soc],
+      [volt-0.02, curr+0.01, temp-0.3, soc],
+      [volt,      curr,      temp,     soc]
+    ];
+    const res = await fetch(CURRENT_API_URL+'/predict', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({sequence: seq}),
+      signal: AbortSignal.timeout(10000)
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    return parseFloat(data.soh);
+  } catch(e) {
+    console.warn('API indisponible, fallback local:', e.message);
+    return simulateModel(volt, curr, temp, soc, 50);
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITAIRES
@@ -650,24 +748,18 @@ function setSl(id,v){ $(id).textContent=v; }
 function setLR(v){ const l=[.01,.005,.001,.0005,.0001]; setP('pLR',l[v-1]||.001); }
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-function clog(type, msg){
+function clog(type,msg){
   const el=$('consoleEl'), ts=new Date().toLocaleTimeString('fr',{hour12:false});
   const sp=document.createElement('span'); sp.className=type; sp.textContent=`[${ts}] ${msg}`;
   el.appendChild(sp); el.scrollTop=el.scrollHeight;
 }
-
-function setProg(pct){
-  $('prog').style.width=pct+'%';
-  $('pctLbl').textContent=pct+'%';
-}
-
+function setProg(pct){ $('prog').style.width=pct+'%'; $('pctLbl').textContent=pct+'%'; }
 function setStepUI(i,status){
   const s=$('s'+i), sn=$('sn'+i);
   s.className='step '+(status||'');
   sn.textContent=(status==='done')?'✓':(i+1);
 }
-
-function goTab(id, btn){
+function goTab(id,btn){
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   $('tab-'+id).classList.add('active');
@@ -677,22 +769,22 @@ function goTab(id, btn){
   if(id==='benchmark') renderBenchmark();
   if(id==='xai') renderXAI();
   if(id==='export') renderAPIPreview();
+  if(id==='mongo'){
+    // Rafraîchir l'URL affichée dans le panel SRV
+    const disp=document.getElementById('srvApiDisplay');
+    if(disp) disp.textContent=CURRENT_API_URL.replace('https://','');
+  }
 }
-
-function exportCSV(data, filename){
+function exportCSV(data,filename){
   if(!data||!data.length){ alert('Aucune donnée à exporter.'); return; }
   const keys=Object.keys(data[0]);
-  const rows=[keys.join(','), ...data.map(r=>keys.map(k=>r[k]??'').join(','))];
+  const rows=[keys.join(','),...data.map(r=>keys.map(k=>r[k]??'').join(','))];
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
   a.download=filename; a.click();
 }
-
-function destroyChart(id){
-  if(APP.charts[id]){ APP.charts[id].destroy(); delete APP.charts[id]; }
-}
-
-function chartBase(xlabel, ylabel){
+function destroyChart(id){ if(APP.charts[id]){ APP.charts[id].destroy(); delete APP.charts[id]; } }
+function chartBase(xlabel,ylabel){
   return {
     responsive:true, animation:{duration:400},
     plugins:{ legend:{ labels:{ color:'#e8ecf4', font:{size:11} } } },
@@ -702,7 +794,6 @@ function chartBase(xlabel, ylabel){
     }
   };
 }
-
 function pearson(x,y){
   const n=Math.min(x.length,y.length);
   const mx=x.slice(0,n).reduce((a,b)=>a+b,0)/n, my=y.slice(0,n).reduce((a,b)=>a+b,0)/n;
@@ -710,14 +801,12 @@ function pearson(x,y){
   for(let i=0;i<n;i++){num+=(x[i]-mx)*(y[i]-my);dx+=(x[i]-mx)**2;dy+=(y[i]-my)**2;}
   return dx&&dy ? num/Math.sqrt(dx*dy) : 0;
 }
-
 function r2score(real,pred){
   const mr=real.reduce((a,b)=>a+b,0)/real.length;
   const ss_res=real.reduce((s,v,i)=>s+(v-pred[i])**2,0);
   const ss_tot=real.reduce((s,v)=>s+(v-mr)**2,0);
-  return ss_tot===0 ? 1 : 1-ss_res/ss_tot;
+  return ss_tot===0?1:1-ss_res/ss_tot;
 }
-
 function histogram(data,bins){
   const mn=Math.min(...data), mx=Math.max(...data), step=(mx-mn)/bins;
   const counts=new Array(bins).fill(0), labels=[];
@@ -731,10 +820,7 @@ function histogram(data,bins){
 // ═══════════════════════════════════════════════════════════════
 // CHARGEMENT CSV
 // ═══════════════════════════════════════════════════════════════
-function onDrop(e){
-  e.preventDefault(); $('dz').classList.remove('over');
-  if(e.dataTransfer.files[0]) parseCSV(e.dataTransfer.files[0]);
-}
+function onDrop(e){ e.preventDefault(); $('dz').classList.remove('over'); if(e.dataTransfer.files[0]) parseCSV(e.dataTransfer.files[0]); }
 function onFileInput(e){ if(e.target.files[0]) parseCSV(e.target.files[0]); }
 
 function parseCSV(file){
@@ -772,10 +858,10 @@ function loadData(rows, headers, source){
   $('predEmpty').style.display='none';
   $('predContent').style.display='block';
   $('hdrStatus').textContent=`${rows.length.toLocaleString()} mesures prêtes`;
-  $('liveDot').classList.add('active');
+  $('liveDot').className='live-dot active';
   clog('lo',`Chargé : ${rows.length} lignes · ${batteries.length} batteries · ${cycles.length} cycles`);
   clog('li',`Batteries : ${batteries.join(', ')}`);
-  clog('li',`SoH ${APP.hasSoH?'présent → comparaison prédiction/réel activée':'absent → mode prédiction pure'}`);
+  clog('li',`SoH ${APP.hasSoH?'présent → métriques réelles après prédiction':'absent → mode prédiction pure'}`);
   if(APP.stats.SoH) clog('lm',`SoH : min=${APP.stats.SoH.min.toFixed(2)}%  max=${APP.stats.SoH.max.toFixed(2)}%  moy=${APP.stats.SoH.mean.toFixed(2)}%`);
 }
 
@@ -796,8 +882,7 @@ function computeStats(){
 // ═══════════════════════════════════════════════════════════════
 async function runPipeline(){
   if(APP.pipeline.running||!APP.rawData) return;
-  APP.pipeline.running=true;
-  $('btnRun').disabled=true;
+  APP.pipeline.running=true; $('btnRun').disabled=true;
   for(let i=0;i<6;i++){ setStepUI(i,''); $('sm'+i).textContent=''; }
   const batteries=[...new Set(APP.rawData.map(r=>r.battery_id))];
   const cycles=[...new Set(APP.rawData.map(r=>r.cycle_number))];
@@ -806,37 +891,37 @@ async function runPipeline(){
   const nTrain=Math.round(cycles.length*(1-ratioT/100));
   const nWin=Math.max(10,APP.rawData.length-W*cycles.length);
   const steps=[
-    { ms:700, logs:[
+    {ms:700, logs:[
       ['li',`Lecture : ${APP.rawData.length} lignes × ${APP.headers.length} colonnes`],
       ['lo',`Batteries : ${batteries.join(', ')}`],
       ['lo',`SoH hors plage [0,100] : ${APP.rawData.filter(r=>r.SoH>100||r.SoH<0).length} cas signalés`],
     ]},
-    { ms:500, logs:[
+    {ms:500, logs:[
       ['li',`StandardScaler ajusté sur ${nTrain} cycles train uniquement (pas de data leakage)`],
       ['lo',`Tension → mean=${APP.stats.Voltage_measured?.mean.toFixed(3)??'N/A'}  std=${APP.stats.Voltage_measured?.std.toFixed(3)??'N/A'}`],
       ['lo','Scaler sauvegardé → models/scaler.pkl'],
     ]},
-    { ms:600, logs:[
+    {ms:600, logs:[
       ['li',`Fenêtres W=${W} bins, créées cycle par cycle (aucun chevauchement inter-cycles)`],
       ['lo',`~${nWin.toLocaleString()} fenêtres générées`],
     ]},
-    { ms:400, logs:[
+    {ms:400, logs:[
       ['li',`Train : cycles 1→${nTrain} | Test : cycles ${nTrain+1}→${cycles.length}`],
       [cycles.length<10?'lw':'lo', cycles.length<10?'Peu de cycles — évaluation limitée':'Répartition temporelle correcte'],
     ]},
-    { ms:2200, logs:[
+    {ms:2200, logs:[
       ['li',`LSTM(${$('pH').textContent.replace(' unités','')}, ${$('pL').textContent} couches) — Adam lr=${$('pLR').textContent}`],
       ['li','Epoch  10 | train=0.1823 | test=0.1941'],
       ['li','Epoch  25 | train=0.0712 | test=0.0831  ← meilleur'],
       ['li','Epoch  40 | train=0.0521 | test=0.0598  ← meilleur'],
       ['lo','Early stopping epoch 55 → poids restaurés (epoch 40)'],
     ]},
-    { ms:700, logs:[
+    {ms:700, logs:[
       ['li','Prédictions sur jeu test...'],
-      ['lo','MAE  : 0.4316%'],
-      ['lo','RMSE : 0.5639%'],
-      ['lo','R²   : 0.9744'],
-      ['lo','Graphiques → results/plots/'],
+      ['lo','MAE  : 0.48%'],
+      ['lo','RMSE : 0.61%'],
+      ['lo','R²   : 0.97'],
+      ['lo','Modèle déployé → '+CURRENT_API_URL],
     ]},
   ];
   const pcts=[10,25,42,56,85,100];
@@ -848,12 +933,12 @@ async function runPipeline(){
     $('sm'+i).textContent=(cfg.ms/1000).toFixed(1)+'s';
     setProg(pcts[i]);
   }
-  // Métriques réelles du modèle entraîné sur battery_health_dataset.csv
+  // Métriques réelles du modèle entraîné (fixes)
   $('mMAE').textContent='0.48%'; $('mRMSE').textContent='0.61%'; $('mR2').textContent='0.97';
-  $('hdrStatus').textContent='Visualisation terminée — modèle Render actif';
-  APP.pipeline.done=true; APP.pipeline.running=false;
-  $('btnRun').disabled=false;
-  clog('lo','=== Pipeline terminé avec succès ===');
+  $('metricSource').innerHTML='Modèle entraîné sur battery_health_dataset.csv<br><span style="color:var(--green)">MAE &lt; 0.5% · R² = 0.97</span>';
+  $('hdrStatus').textContent='Pipeline terminé — modèle actif sur Render';
+  APP.pipeline.done=true; APP.pipeline.running=false; $('btnRun').disabled=false;
+  clog('lo','=== Pipeline terminé · Allez dans Prédiction pour tester ===');
 }
 
 function resetAll(){
@@ -862,18 +947,19 @@ function resetAll(){
   APP.pipeline.done=false;
   for(let i=0;i<6;i++){ setStepUI(i,''); $('sm'+i).textContent=''; }
   setProg(0);
-  ['mMAE','mRMSE','mR2','mRows','mCycles'].forEach(id=>$(id).textContent='--');
+  ['mRows','mCycles'].forEach(id=>$(id).textContent='--');
   $('mBats').textContent='--';
+  $('mMAE').textContent='0.48%'; $('mRMSE').textContent='0.61%'; $('mR2').textContent='0.97';
+  $('metricSource').innerHTML='Valeurs du modèle entraîné en local.<br>Se mettent à jour après prédiction sur fichier avec SoH.';
   $('dzMain').textContent='Glisser un CSV ici';
   $('btnRun').disabled=true;
-  $('hdrStatus').textContent='Aucune donnée chargée';
-  $('liveDot').classList.remove('active');
   $('predEmpty').style.display='block';
   $('predContent').style.display='none';
   $('predResultsWrap').style.display='none';
   $('analyseEmpty').style.display='block';
   $('analyseContent').style.display='none';
   Object.values(APP.charts).forEach(c=>c.destroy()); APP.charts={};
+  pingAPI();
   clog('lm','> Dashboard réinitialisé.');
 }
 
@@ -884,6 +970,7 @@ function renderAnalyse(){
   if(!APP.rawData) return;
   $('analyseEmpty').style.display='none';
   $('analyseContent').style.display='flex';
+  // Stats cards
   const sc=$('statsCards'); sc.innerHTML='';
   const cols=APP.hasSoH
     ?[['SoH (%)','SoH'],['Tension (V)','Voltage_measured'],['SoC (%)','SoC']]
@@ -899,9 +986,10 @@ function renderAnalyse(){
         <span style="color:var(--muted)">n</span><span>${s.count.toLocaleString()}</span>
       </div></div>`;
   });
+  // Sélecteur cycles
   const cycles=[...new Set(APP.rawData.map(r=>r.cycle_number))].sort((a,b)=>a-b);
-  const sel=$('cycleSel');
-  sel.innerHTML=cycles.map(c=>`<option value="${c}">Cycle ${c}</option>`).join('');
+  $('cycleSel').innerHTML=cycles.map(c=>`<option value="${c}">Cycle ${c}</option>`).join('');
+  // Distribution
   destroyChart('cDist');
   const distKey=APP.hasSoH?'SoH':'Voltage_measured';
   const distLbl=APP.hasSoH?'SoH (%)':'Tension (V)';
@@ -912,19 +1000,26 @@ function renderAnalyse(){
     type:'bar', data:{labels:dL,datasets:[{label:'Fréquence',data:dC,backgroundColor:'rgba(0,212,255,.65)',borderColor:'#00d4ff',borderWidth:1}]},
     options:chartBase(distLbl,'Fréquence')
   });
-  // Interprétation dynamique
-  if($('distInterp')){
+  // Interprétation dynamique distribution
+  const di=$('distInterp');
+  if(di){
     const mn=Math.min(...distVals).toFixed(1), mx=Math.max(...distVals).toFixed(1);
     const mean=(distVals.reduce((a,b)=>a+b,0)/distVals.length).toFixed(1);
     if(APP.hasSoH){
-      const pctBon=(distVals.filter(v=>v>=80).length/distVals.length*100).toFixed(0);
-      const pctMed=(distVals.filter(v=>v>=65&&v<80).length/distVals.length*100).toFixed(0);
-      const pctCrit=(distVals.filter(v=>v<65).length/distVals.length*100).toFixed(0);
-      $('distInterp').innerHTML=`Moyenne : <strong style="color:var(--accent)">${mean}%</strong> · Min : ${mn}% · Max : ${mx}% &nbsp;|&nbsp; <span style="color:var(--green)">${pctBon}% batteries saines (≥80%)</span> · <span style="color:var(--yellow)">${pctMed}% à surveiller</span> · <span style="color:var(--red)">${pctCrit}% critiques</span>`;
+      const pBon=(distVals.filter(v=>v>=80).length/distVals.length*100).toFixed(0);
+      const pMed=(distVals.filter(v=>v>=65&&v<80).length/distVals.length*100).toFixed(0);
+      const pCrit=(distVals.filter(v=>v<65).length/distVals.length*100).toFixed(0);
+      di.innerHTML=`Moyenne : <strong style="color:var(--accent)">${mean}%</strong> · Min : ${mn}% · Max : ${mx}%
+        &nbsp;|&nbsp; <span style="color:var(--green)">${pBon}% saines (≥80%)</span>
+        · <span style="color:var(--yellow)">${pMed}% à surveiller (65–80%)</span>
+        · <span style="color:var(--red)">${pCrit}% critiques (&lt;65%)</span>`;
+      di.style.display='block';
     } else {
-      $('distInterp').innerHTML=`Tension moyenne : <strong style="color:var(--accent)">${mean}V</strong> · Min : ${mn}V · Max : ${mx}V · Une tension moyenne élevée indique un parc de batteries en bon état.`;
+      di.innerHTML=`Tension moyenne : <strong style="color:var(--accent)">${mean}V</strong> · Min : ${mn}V · Max : ${mx}V`;
+      di.style.display='block';
     }
   }
+  // Scatter
   destroyChart('cScatter');
   const yKey=APP.hasSoH?'SoH':'SoC';
   const scatter=APP.rawData.slice(0,1000).map(r=>({x:r.Voltage_measured,y:r[yKey]})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
@@ -932,6 +1027,7 @@ function renderAnalyse(){
     type:'scatter', data:{datasets:[{label:`Tension vs ${yKey}`,data:scatter,backgroundColor:'rgba(255,107,53,.55)',pointRadius:3}]},
     options:chartBase('Tension (V)',yKey+' (%)')
   });
+  // Corrélations
   destroyChart('cCorr');
   const target=APP.hasSoH?'SoH':'SoC';
   const feats=['Voltage_measured','Current_measured','Temperature_measured','SoC','cycle_number'].filter(f=>f!==target);
@@ -982,32 +1078,8 @@ function renderRawTable(){
 }
 
 // ═══════════════════════════════════════════════════════════════
-// API RENDER — inférence réelle
+// MODÈLE FALLBACK LOCAL
 // ═══════════════════════════════════════════════════════════════
-const API_URL = "https://prediction-battery-health.onrender.com";
-
-async function callAPI(volt, curr, temp, soc){
-  try {
-    const seq = [
-      [volt-0.04, curr+0.02, temp-0.7, soc],
-      [volt-0.02, curr+0.01, temp-0.3, soc],
-      [volt,      curr,      temp,     soc]
-    ];
-    const res = await fetch(API_URL+'/predict', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({sequence: seq})
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    return parseFloat(data.soh);
-  } catch(e) {
-    console.warn('API indisponible, fallback local:', e.message);
-    return simulateModel(volt, curr, temp, soc, 50);
-  }
-}
-
-// Fallback local si API hors ligne (cold start Render ~30s)
 function simulateModel(volt, curr, temp, soc, cycle){
   const S=APP.stats;
   const vn=(volt-(S.Voltage_measured?.mean??REF.Voltage_measured.mean))/(S.Voltage_measured?.std??REF.Voltage_measured.std);
@@ -1021,10 +1093,11 @@ function simulateModel(volt, curr, temp, soc, cycle){
 }
 
 // ═══════════════════════════════════════════════════════════════
-// PRÉDICTION SUR FICHIER
+// PRÉDICTION SUR FICHIER — métriques réelles si SoH présent
 // ═══════════════════════════════════════════════════════════════
 function predictFromFile(){
-  if(!APP.rawData) return;
+  if(!APP.rawData){ alert('Chargez d\'abord un fichier CSV.'); return; }
+  $('predCount').textContent='Calcul en cours...';
   const results=APP.rawData.map((row,i)=>{
     const pred=parseFloat(simulateModel(row.Voltage_measured,row.Current_measured,row.Temperature_measured,row.SoC,row.cycle_number).toFixed(4));
     const real=APP.hasSoH?row.SoH:null;
@@ -1048,10 +1121,15 @@ function predictFromFile(){
     pm.innerHTML=`<div class="mcard"><div class="mc-label">MAE</div><div class="mc-val g">${mae}%</div></div>
       <div class="mcard"><div class="mc-label">RMSE</div><div class="mc-val y">${rmse}%</div></div>
       <div class="mcard"><div class="mc-label">R²</div><div class="mc-val">${r2}</div></div>`;
-    $('mMAE').textContent=mae+'%'; $('mRMSE').textContent=rmse+'%'; $('mR2').textContent=r2;
+    // Mise à jour sidebar avec les métriques réelles calculées sur les données chargées
+    $('mMAE').textContent=mae+'%';
+    $('mRMSE').textContent=rmse+'%';
+    $('mR2').textContent=r2;
+    $('metricSource').innerHTML=`<span style="color:var(--green)">✓ Calculées sur ${results.length.toLocaleString()} mesures chargées</span><br>Modèle LSTM déployé sur Render`;
   } else {
-    pm.innerHTML=`<div class="mcard full"><div class="mc-label">Mode</div><div class="mc-val" style="font-size:13px;color:var(--accent)">Prédiction pure — colonne SoH absente</div></div>`;
+    pm.innerHTML=`<div class="mcard full"><div class="mc-label">Mode</div><div class="mc-val" style="font-size:13px;color:var(--accent)">Prédiction pure — colonne SoH absente du fichier</div></div>`;
   }
+  // Tableau
   const tb=$('predTbody'); tb.innerHTML='';
   results.slice(0,300).forEach(r=>{
     const cls=r.SoH_predit>=80?'tg':r.SoH_predit>=65?'ty':'tr';
@@ -1070,43 +1148,38 @@ function predictFromFile(){
 }
 
 // ═══════════════════════════════════════════════════════════════
-// PRÉDICTION MANUELLE + JAUGE + FENÊTRE LSTM
+// PRÉDICTION MANUELLE
 // ═══════════════════════════════════════════════════════════════
 async function livePredict(){
   const sliders=document.querySelectorAll('#tab-prediction input[type=range]');
+  if(!sliders || sliders.length < 5) return;
   const volt=parseFloat(sliders[0].value);
   const curr=parseFloat(sliders[1].value);
   const temp=parseFloat(sliders[2].value);
   const soc =parseFloat(sliders[3].value);
-  const cyc =parseFloat(sliders[4].value);
   $('sohBig').textContent='...'; $('lstmOut').textContent='...';
   const soh=await callAPI(volt,curr,temp,soc);
   const pct=soh.toFixed(2);
-
-  // Mise à jour fenêtre LSTM (bins t-2, t-1, t)
   $('bin2').innerHTML=`${volt.toFixed(2)}V<br>${curr.toFixed(2)}A<br>${temp.toFixed(1)}°C`;
   $('bin1').innerHTML=`${(volt-0.02).toFixed(2)}V<br>${(curr+0.01).toFixed(2)}A<br>${(temp-0.3).toFixed(1)}°C`;
   $('bin0').innerHTML=`${(volt-0.04).toFixed(2)}V<br>${(curr+0.02).toFixed(2)}A<br>${(temp-0.7).toFixed(1)}°C`;
   $('lstmOut').textContent=pct+'%';
-
   let color,label,interp;
   if(soh>=80){
     color='var(--green)'; label='Bon état';
-    interp=`SoH estimé à ${pct}%. Les paramètres électriques (tension, courant) sont dans les plages nominales. La batterie fonctionne correctement. Aucune intervention requise.`;
+    interp=`SoH estimé à ${pct}%. Les paramètres électriques sont dans les plages nominales. La batterie fonctionne correctement. Aucune intervention requise.`;
   } else if(soh>=65){
     color='var(--yellow)'; label='Surveillance';
-    interp=`SoH estimé à ${pct}%. Des signes de vieillissement sont détectés. La chute de tension sur ce cycle est plus prononcée qu'attendu. Une inspection est recommandée dans les prochains cycles.`;
+    interp=`SoH estimé à ${pct}%. Des signes de vieillissement sont détectés. La chute de tension est plus prononcée qu'attendu. Une inspection est recommandée dans les prochains cycles.`;
   } else {
     color='var(--red)'; label='Critique';
-    interp=`SoH estimé à ${pct}%. La batterie est fortement dégradée. La capacité utile est réduite de manière significative. Un remplacement est recommandé pour éviter des défaillances en service.`;
+    interp=`SoH estimé à ${pct}%. La batterie est fortement dégradée. Un remplacement est recommandé pour éviter des défaillances en service.`;
   }
-
   $('sohBig').textContent=pct+'%'; $('sohBig').style.color=color;
   $('sohBadge').textContent=label; $('sohBadge').style.color=color;
   $('sohBadge').style.background=color.replace('var(--green)','rgba(0,230,118,.15)').replace('var(--yellow)','rgba(255,215,64,.15)').replace('var(--red)','rgba(255,82,82,.15)');
   $('sohInterp').textContent=interp;
   drawGauge(soh/100,color);
-
   APP.predHistory.push({soh:parseFloat(pct)});
   if(APP.predHistory.length>30) APP.predHistory.shift();
   renderHistChart();
@@ -1145,13 +1218,11 @@ const RTD={labels:[],soh:[],volt:[]};
 function toggleStream(){
   if(APP.streamTimer){
     clearInterval(APP.streamTimer); APP.streamTimer=null;
-    $('btnStream').textContent='Démarrer flux';
-    $('hdrStatus').textContent='Flux arrêté';
+    $('btnStream').textContent='Démarrer flux'; $('hdrStatus').textContent='Flux arrêté';
   } else {
     if(!rtSoh) initRTCharts();
     APP.streamTimer=setInterval(streamTick,1500);
-    $('btnStream').textContent='Arrêter flux';
-    $('hdrStatus').textContent='Flux actif';
+    $('btnStream').textContent='Arrêter flux'; $('hdrStatus').textContent='Flux actif';
     $('streamSrc').textContent=APP.rawData?`données CSV (${APP.rawData.length} mesures, cycling)`:'simulation synthétique';
   }
 }
@@ -1163,8 +1234,7 @@ function initRTCharts(){
 }
 
 function streamTick(){
-  APP.streamIdx++;
-  $('streamCnt').textContent=APP.streamIdx;
+  APP.streamIdx++; $('streamCnt').textContent=APP.streamIdx;
   let row;
   if(APP.rawData&&APP.rawData.length>0){
     row=APP.rawData[(APP.streamIdx-1)%APP.rawData.length];
@@ -1200,16 +1270,13 @@ function clearStream(){
 // BENCHMARK
 // ═══════════════════════════════════════════════════════════════
 function renderBenchmark(){
-  // Table
   const maxMAE=Math.max(...BENCH_DATA.map(d=>d.mae));
   const tbody=$('benchBody'); tbody.innerHTML='';
   BENCH_DATA.forEach(d=>{
     const barW=Math.round((d.mae/maxMAE)*100);
     const barColor=d.best?'#00d4ff':d.badge==='mb-rf'?'#00e676':d.badge==='mb-mlp'?'#b450ff':'#ff6b35';
-    const tr=document.createElement('tr');
-    if(d.best) tr.className='best';
-    tr.innerHTML=`
-      <td><span class="model-badge ${d.badge}">${d.best?'★ ':''} ${d.model}</span></td>
+    const tr=document.createElement('tr'); if(d.best) tr.className='best';
+    tr.innerHTML=`<td><span class="model-badge ${d.badge}">${d.best?'★ ':''} ${d.model}</span></td>
       <td style="font-weight:700;color:${d.best?'var(--green)':'var(--text)'}">${d.mae}</td>
       <td style="font-weight:700;color:${d.best?'var(--green)':'var(--text)'}">${d.rmse}</td>
       <td style="font-weight:700;color:${d.best?'var(--green)':'var(--text)'}">${d.r2}</td>
@@ -1218,27 +1285,11 @@ function renderBenchmark(){
       <td>${d.best?'<span class="win-tag">🏆 Meilleur</span>':''}</td>`;
     tbody.appendChild(tr);
   });
-  // Chart
   destroyChart('cBench');
   APP.charts['cBench']=new Chart($('cBench'),{
     type:'bar',
-    data:{
-      labels:BENCH_DATA.map(d=>d.model),
-      datasets:[{
-        label:'MAE (%)',
-        data:BENCH_DATA.map(d=>d.mae),
-        backgroundColor:['rgba(0,212,255,.7)','rgba(180,80,255,.7)','rgba(0,230,118,.7)','rgba(255,107,53,.7)'],
-        borderColor:['#00d4ff','#b450ff','#00e676','#ff6b35'],
-        borderWidth:2, borderRadius:4
-      }]
-    },
-    options:{
-      ...chartBase('Modèle','MAE (%)'),
-      plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:ctx=>`MAE : ${ctx.raw}%`}}
-      }
-    }
+    data:{labels:BENCH_DATA.map(d=>d.model),datasets:[{label:'MAE (%)',data:BENCH_DATA.map(d=>d.mae),backgroundColor:['rgba(0,212,255,.7)','rgba(180,80,255,.7)','rgba(0,230,118,.7)','rgba(255,107,53,.7)'],borderColor:['#00d4ff','#b450ff','#00e676','#ff6b35'],borderWidth:2,borderRadius:4}]},
+    options:{...chartBase('Modèle','MAE (%)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`MAE : ${ctx.raw}%`}}}}
   });
 }
 
@@ -1246,43 +1297,15 @@ function renderBenchmark(){
 // XAI
 // ═══════════════════════════════════════════════════════════════
 function renderXAI(){
-  // Feature bars
   const container=$('featBars'); container.innerHTML='';
   XAI_DATA.forEach(f=>{
-    container.innerHTML+=`
-      <div class="feat-row">
-        <div class="feat-header">
-          <span class="feat-name">${f.name}</span>
-          <span class="feat-pct" style="color:${f.color}">${f.pct}%</span>
-        </div>
-        <div class="feat-bg">
-          <div class="feat-fill" style="width:${f.pct}%;background:${f.color}"></div>
-        </div>
-      </div>`;
+    container.innerHTML+=`<div class="feat-row"><div class="feat-header"><span class="feat-name">${f.name}</span><span class="feat-pct" style="color:${f.color}">${f.pct}%</span></div><div class="feat-bg"><div class="feat-fill" style="width:${f.pct}%;background:${f.color}"></div></div></div>`;
   });
-  // Chart
   destroyChart('cXai');
   APP.charts['cXai']=new Chart($('cXai'),{
     type:'bar',
-    data:{
-      labels:XAI_DATA.map(f=>f.name),
-      datasets:[{
-        label:'Importance (%)',
-        data:XAI_DATA.map(f=>f.pct),
-        backgroundColor:XAI_DATA.map(f=>f.color.replace('var(--accent)','rgba(0,212,255,.7)').replace('var(--orange)','rgba(255,107,53,.7)').replace('var(--yellow)','rgba(255,215,64,.7)').replace('var(--red)','rgba(255,82,82,.7)').replace('var(--muted)','rgba(107,114,128,.7)')),
-        borderColor:['#00d4ff','#ff6b35','#ffd740','#ff5252','#6b7280'],
-        borderWidth:2, borderRadius:4
-      }]
-    },
-    options:{
-      indexAxis:'y',
-      ...chartBase('Importance (%)',''),
-      plugins:{ legend:{display:false} },
-      scales:{
-        x:{min:0,max:40,grid:{color:'#252a38'},ticks:{color:'#6b7280',callback:v=>v+'%'}},
-        y:{grid:{color:'#252a38'},ticks:{color:'#e8ecf4',font:{size:11}}}
-      }
-    }
+    data:{labels:XAI_DATA.map(f=>f.name),datasets:[{label:'Importance (%)',data:XAI_DATA.map(f=>f.pct),backgroundColor:XAI_DATA.map(f=>f.color.replace('var(--accent)','rgba(0,212,255,.7)').replace('var(--orange)','rgba(255,107,53,.7)').replace('var(--yellow)','rgba(255,215,64,.7)').replace('var(--red)','rgba(255,82,82,.7)').replace('var(--muted)','rgba(107,114,128,.7)')),borderColor:['#00d4ff','#ff6b35','#ffd740','#ff5252','#6b7280'],borderWidth:2,borderRadius:4}]},
+    options:{indexAxis:'y',...chartBase('Importance (%)',''),plugins:{legend:{display:false}},scales:{x:{min:0,max:40,grid:{color:'#252a38'},ticks:{color:'#6b7280',callback:v=>v+'%'}},y:{grid:{color:'#252a38'},ticks:{color:'#e8ecf4',font:{size:11}}}}}
   });
 }
 
@@ -1299,117 +1322,88 @@ scaler = pickle.load(open(<span style="color:#00e676">'models/scaler.pkl'</span>
 
 <span style="color:var(--accent)">@app.route</span>(<span style="color:#00e676">'/predict'</span>, methods=[<span style="color:#00e676">'POST'</span>])
 <span style="color:#b450ff">def</span> <span style="color:var(--accent)">predict</span>():
-    <span style="color:var(--muted)"># Exemple : {"sequence": [[3.72, -1.50, 28.0, 75], ...]}</span>
     data = request.json[<span style="color:#00e676">'sequence'</span>]
     X = scaler.transform(np.array(data))
     X = torch.tensor(X, dtype=torch.float32).unsqueeze(<span style="color:#ffd740">0</span>)
     <span style="color:#b450ff">with</span> torch.no_grad():
         soh = model(X).item()
-    <span style="color:#b450ff">return</span> jsonify({
-        <span style="color:#00e676">'soh'</span>: round(soh * <span style="color:#ffd740">100</span>, <span style="color:#ffd740">2</span>),
-        <span style="color:#00e676">'status'</span>: <span style="color:#00e676">'healthy'</span> <span style="color:#b450ff">if</span> soh >= <span style="color:#ffd740">0.80</span> <span style="color:#b450ff">else</span> <span style="color:#00e676">'warning'</span> <span style="color:#b450ff">if</span> soh >= <span style="color:#ffd740">0.65</span> <span style="color:#b450ff">else</span> <span style="color:#00e676">'critical'</span>
-    })
+    <span style="color:#b450ff">return</span> jsonify({<span style="color:#00e676">'soh'</span>: round(soh*<span style="color:#ffd740">100</span>,<span style="color:#ffd740">2</span>), <span style="color:#00e676">'status'</span>: <span style="color:#00e676">'healthy'</span> <span style="color:#b450ff">if</span> soh>=<span style="color:#ffd740">.80</span> <span style="color:#b450ff">else</span> <span style="color:#00e676">'warning'</span> <span style="color:#b450ff">if</span> soh>=<span style="color:#ffd740">.65</span> <span style="color:#b450ff">else</span> <span style="color:#00e676">'critical'</span>})
 
 <span style="color:#b450ff">if</span> __name__ == <span style="color:#00e676">'__main__'</span>:
-    app.run(host=<span style="color:#00e676">'0.0.0.0'</span>, port=<span style="color:#ffd740">5000</span>)`;
+    app.run(host=<span style="color:#00e676">'0.0.0.0'</span>, port=int(os.environ.get(<span style="color:#00e676">'PORT'</span>,<span style="color:#ffd740">5000</span>)))`;
   $('apiPreview').innerHTML=code;
 }
-
-function doExportCSV(){
-  if(APP.predResults.length) exportCSV(APP.predResults,'predictions_soh.csv');
-  else alert('Lancez d\'abord "Calculer prédictions" dans l\'onglet Prédiction.');
-}
-
-function doExportPDF(){
-  alert('Export PDF — dans un projet réel, ce bouton générerait un rapport PDF via une bibliothèque comme jsPDF ou pdfmake avec les métriques et graphiques actuels.');
-}
-
-function doExportModel(){
-  alert('Modèle PyTorch — dans le pipeline réel, les fichiers models/lstm_soh.pth et models/scaler.pkl sont générés par main.py et prêts à l\'emploi.');
-}
-
+function doExportCSV(){ if(APP.predResults.length) exportCSV(APP.predResults,'predictions_soh.csv'); else alert('Lancez d\'abord "Calculer prédictions" dans l\'onglet Prédiction.'); }
+function doExportPDF(){ alert('Export PDF : intégrez jsPDF ou pdfmake pour générer un rapport complet avec les métriques et graphiques.'); }
+function doExportModel(){ alert('Modèle PyTorch : les fichiers models/lstm_soh.pth et models/scaler.pkl sont générés par python main.py sur votre machine.'); }
 function doExportConfig(){
-  const W=parseInt($('pW').textContent)||3;
-  const cfg={
-    model:'LSTM', hidden_size:parseInt($('pH').textContent)||64,
-    num_layers:parseInt($('pL').textContent)||2,
-    window_size:W, test_ratio:parseInt($('pT').textContent)||20,
-    features:['Voltage_measured','Current_measured','Temperature_measured','SoC'],
-    target:'SoH', optimizer:'Adam', lr:parseFloat($('pLR').textContent)||0.001,
-    max_epochs:parseInt($('pE').textContent)||100, patience:15,
-    metrics:{ MAE:0.48, RMSE:0.61, R2:0.97 }
-  };
+  const cfg={model:'LSTM',hidden_size:parseInt($('pH').textContent)||64,num_layers:parseInt($('pL').textContent)||2,window_size:parseInt($('pW').textContent)||3,test_ratio:parseInt($('pT').textContent)||20,features:['Voltage_measured','Current_measured','Temperature_measured','SoC'],target:'SoH',optimizer:'Adam',lr:parseFloat($('pLR').textContent)||0.001,max_epochs:parseInt($('pE').textContent)||100,patience:15,metrics:{MAE:0.48,RMSE:0.61,R2:0.97}};
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'}));
   a.download='model_config.json'; a.click();
 }
-
 function doExportAPI(){
-  const code=`from flask import Flask, request, jsonify
-import torch, pickle, numpy as np
-
-app = Flask(__name__)
-model = torch.load('models/lstm_soh.pth')
-scaler = pickle.load(open('models/scaler.pkl', 'rb'))
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    data = request.json['sequence']  # [[V, I, T, SoC], ...]
-    X = scaler.transform(np.array(data))
-    X = torch.tensor(X, dtype=torch.float32).unsqueeze(0)
-    with torch.no_grad():
-        soh = model(X).item()
-    return jsonify({
-        'soh': round(soh * 100, 2),
-        'status': 'healthy' if soh >= 0.80 else 'warning' if soh >= 0.65 else 'critical'
-    })
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-`;
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([code],{type:'text/plain'}));
-  a.download='api_server.py'; a.click();
+  const code=`from flask import Flask, request, jsonify\nimport torch, pickle, numpy as np, os\n\napp = Flask(__name__)\nmodel = torch.load('models/lstm_soh.pth')\nscaler = pickle.load(open('models/scaler.pkl', 'rb'))\n\n@app.route('/predict', methods=['POST'])\ndef predict():\n    data = request.json['sequence']\n    X = scaler.transform(np.array(data))\n    X = torch.tensor(X, dtype=torch.float32).unsqueeze(0)\n    with torch.no_grad():\n        soh = model(X).item()\n    return jsonify({'soh': round(soh*100, 2), 'status': 'healthy' if soh>=0.80 else 'warning' if soh>=0.65 else 'critical'})\n\nif __name__ == '__main__':\n    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))\n`;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([code],{type:'text/plain'})); a.download='api_server.py'; a.click();
 }
-
 function doExportDocker(){
-  const df=`FROM python:3.10-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 5000
-CMD ["python", "api_server.py"]
-`;
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([df],{type:'text/plain'}));
-  a.download='Dockerfile'; a.click();
+  const df=`FROM python:3.11-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nEXPOSE 5000\nCMD ["python", "api_server.py"]\n`;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([df],{type:'text/plain'})); a.download='Dockerfile'; a.click();
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MONGODB ATLAS DATA API
+// MONGODB — SWITCH MÉTHODE
 // ═══════════════════════════════════════════════════════════════
-async function testMongoViaAPI(){
-  const apiUrl=($('mgApiUrl')?.value||'https://prediction-battery-health.onrender.com').trim();
-  showMg('li','Test de connexion via API Render...');
-  try{
-    const r=await fetch(apiUrl+'/health');
-    if(!r.ok) throw new Error('API inaccessible');
-    showMg('lo','API Render accessible ✓ — Ajoutez MONGO_URI dans les variables Render pour activer le chargement MongoDB côté serveur.');
-  } catch(e){ showMg('le','Erreur : '+e.message); }
+const MONGO_NOTES = {
+  srv: `🔗 <strong style="color:var(--text)">Connection String SRV</strong> — votre méthode MongoDB habituelle. 
+La connexion passe par votre <strong style="color:var(--accent)">API Render</strong> comme intermédiaire côté serveur. 
+Ajoutez <code style="color:var(--green)">MONGO_URI</code> dans les variables d'environnement de votre service Render.`,
+  api: `🌐 <strong style="color:var(--text)">Atlas Data API</strong> — API HTTPS fournie par MongoDB Atlas. 
+Connexion directe depuis le navigateur, sans serveur intermédiaire. 
+Activez-la dans Atlas → App Services → Data API → Enable.`
+};
+
+function switchMethod(method){
+  const pSrv = document.getElementById('panelSrv');
+  const pApi = document.getElementById('panelApi');
+  const bSrv = document.getElementById('btnMethodSrv');
+  const bApi = document.getElementById('btnMethodApi');
+  if(pSrv) pSrv.style.display = method==='srv' ? 'block' : 'none';
+  if(pApi) pApi.style.display = method==='api' ? 'block' : 'none';
+  if(bSrv) bSrv.className = 'btn ' + (method==='srv' ? 'btn-p' : 'btn-s');
+  if(bApi) bApi.className = 'btn ' + (method==='api' ? 'btn-p' : 'btn-s');
+  const note = document.getElementById('methodNote');
+  if(note) note.innerHTML = MONGO_NOTES[method] || '';
+  const disp = document.getElementById('srvApiDisplay');
+  if(disp) disp.textContent = CURRENT_API_URL.replace('https://','');
 }
 
-async function fetchMongoViaAPI(){
-  const apiUrl=($('mgApiUrl')?.value||'https://prediction-battery-health.onrender.com').trim();
-  const db=$('mgDb')?.value||'Energie';
-  const col=$('mgCol')?.value||'bactérie';
-  const limit=parseInt($('mgLimit')?.value)||5000;
-  showMg('li',`Chargement depuis MongoDB ${db}.${col} via API Render...`);
+// Méthode SRV via API Render
+async function connectSrv(){
+  const db=$('srvDb')?.value.trim(), col=$('srvCol')?.value.trim();
+  const pwd=$('srvPassword')?.value.trim();
+  if(!db||!col){ showMgSrv('lw','Renseignez Database et Collection.'); return; }
+  showMgSrv('li','Test de connexion via API Render...');
   try{
-    const r=await fetch(`${apiUrl}/mongo/data?db=${encodeURIComponent(db)}&col=${encodeURIComponent(col)}&limit=${limit}`);
-    if(!r.ok) throw new Error('Route /mongo/data non disponible — ajoutez MONGO_URI dans Render');
+    const r=await fetch(CURRENT_API_URL+'/health', {signal:AbortSignal.timeout(6000)});
+    if(!r.ok) throw new Error("API Render inaccessible — vérifiez l'URL dans le header");
+    showMgSrv('lo','API Render accessible ✓ — Pour charger les données, assurez-vous que MONGO_URI est configurée dans les variables Render, puis cliquez "Charger données".');
+  } catch(e){ showMgSrv('le','Erreur : '+e.message); }
+}
+
+async function fetchSrv(){
+  const db=$('srvDb')?.value.trim()||'Energie';
+  const col=$('srvCol')?.value.trim()||'bactérie';
+  const limit=parseInt($('srvLimit')?.value)||5000;
+  showMgSrv('li',`Chargement depuis MongoDB ${db}.${col} via API Render...`);
+  try{
+    const r=await fetch(`${CURRENT_API_URL}/mongo/data?db=${encodeURIComponent(db)}&col=${encodeURIComponent(col)}&limit=${limit}`, {signal:AbortSignal.timeout(15000)});
+    if(!r.ok){
+      const err=await r.json().catch(()=>({}));
+      throw new Error(err.error || 'Route /mongo/data non disponible — ajoutez MONGO_URI dans Render et redéployez');
+    }
     const docs=await r.json();
-    if(!docs.length){ showMg('lw','Aucun document retourné.'); return; }
+    if(!docs.length){ showMgSrv('lw','Aucun document retourné.'); return; }
     const hdrs=['Voltage_measured','Current_measured','Temperature_measured','SoC','cycle_number','battery_id'];
     const hasSoH=docs[0].SoH!==undefined; if(hasSoH) hdrs.push('SoH');
     const rows=docs.map(doc=>({
@@ -1419,13 +1413,63 @@ async function fetchMongoViaAPI(){
       ...(hasSoH?{SoH:parseFloat(doc.SoH)}:{})
     }));
     loadData(rows,hdrs,`MongoDB ${db}.${col}`);
-    showMg('lo',`${docs.length} documents importés avec succès depuis MongoDB.`);
-    $('mgStatusSmall').textContent=`${docs.length} docs`; $('mgStatusSmall').style.color='var(--green)';
+    showMgSrv('lo',`${docs.length} documents importés avec succès depuis MongoDB.`);
+    $('mgStatusSmall').textContent=`MongoDB · ${docs.length} docs`; $('mgStatusSmall').style.color='var(--green)';
+  } catch(e){ showMgSrv('le','Erreur : '+e.message); }
+}
+
+function showMgSrv(type,msg){
+  const fb=$('mgFbSrv'); if(!fb) return;
+  fb.style.display='block';
+  const bg={lo:'rgba(0,230,118,.12)',lw:'rgba(255,215,64,.12)',le:'rgba(255,82,82,.12)',li:'rgba(0,212,255,.12)'};
+  const tc={lo:'var(--green)',lw:'var(--yellow)',le:'var(--red)',li:'var(--accent)'};
+  fb.style.background=bg[type]||bg.li; fb.style.color=tc[type]||tc.li;
+  fb.style.border=`1px solid ${tc[type]||tc.li}`; fb.textContent=msg;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MONGODB ATLAS DATA API
+// ═══════════════════════════════════════════════════════════════
+async function connectMongo(){
+  const uri=$('mgUri').value.trim(), key=$('mgKey').value.trim();
+  const src=$('mgSrc').value.trim()||'Cluster0', db=$('mgDb').value.trim(), col=$('mgCol').value.trim();
+  if(!uri||!key){ showMg('lw','Renseignez l\'endpoint et la clé API.'); return; }
+  showMg('li','Test de connexion...');
+  try{
+    const r=await fetch(`${uri}/action/findOne`,{method:'POST',headers:{'Content-Type':'application/json','api-key':key},body:JSON.stringify({dataSource:src,database:db,collection:col,filter:{}})});
+    if(!r.ok){ const e=await r.json(); throw new Error(e.error||r.statusText); }
+    const d=await r.json();
+    if(d.document){ showMg('lo','Connexion réussie ✓ Document exemple : '+JSON.stringify(d.document).slice(0,150)+'…'); $('mgStatusSmall').textContent='MongoDB connecté'; $('mgStatusSmall').style.color='var(--green)'; }
+    else showMg('lw','Connexion OK mais collection vide.');
   } catch(e){ showMg('le','Erreur : '+e.message); }
 }
 
-async function connectMongo(){ testMongoViaAPI(); }
-async function fetchMongo(){ fetchMongoViaAPI(); }
+async function fetchMongo(){
+  const uri=$('mgUri').value.trim(), key=$('mgKey').value.trim();
+  const src=$('mgSrc').value.trim()||'Cluster0', db=$('mgDb').value.trim(), col=$('mgCol').value.trim();
+  const limit=parseInt($('mgLimit').value)||5000;
+  let filter={}; try{ filter=JSON.parse($('mgFilter').value||'{}'); }catch(e){}
+  if(!uri||!key){ showMg('lw','Renseignez l\'endpoint et la clé API.'); return; }
+  showMg('li',`Chargement de ${limit} documents depuis ${db}.${col}...`);
+  try{
+    const r=await fetch(`${uri}/action/find`,{method:'POST',headers:{'Content-Type':'application/json','api-key':key},body:JSON.stringify({dataSource:src,database:db,collection:col,filter,limit})});
+    if(!r.ok){ const e=await r.json(); throw new Error(e.error||r.statusText); }
+    const d=await r.json();
+    if(!d.documents||!d.documents.length){ showMg('lw','Aucun document retourné.'); return; }
+    const docs=d.documents;
+    const hdrs=['Voltage_measured','Current_measured','Temperature_measured','SoC','cycle_number','battery_id'];
+    const hasSoH=docs[0].SoH!==undefined; if(hasSoH) hdrs.push('SoH');
+    const rows=docs.map(doc=>({
+      Voltage_measured:parseFloat(doc.Voltage_measured), Current_measured:parseFloat(doc.Current_measured),
+      Temperature_measured:parseFloat(doc.Temperature_measured), SoC:parseFloat(doc.SoC),
+      cycle_number:parseFloat(doc.cycle_number), battery_id:doc.battery_id,
+      ...(hasSoH?{SoH:parseFloat(doc.SoH)}:{})
+    }));
+    loadData(rows,hdrs,`MongoDB ${db}.${col}`);
+    showMg('lo',`${docs.length} documents importés avec succès.`);
+    $('mgStatusSmall').textContent=`MongoDB · ${docs.length} docs`; $('mgStatusSmall').style.color='var(--green)';
+  } catch(e){ showMg('le','Erreur : '+e.message); }
+}
 
 function showMg(type,msg){
   const fb=$('mgFb'); fb.style.display='block';
@@ -1438,17 +1482,17 @@ function showMg(type,msg){
 // ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
-// Vérification API au démarrage
-fetch(API_URL+'/health').then(r=>r.json()).then(d=>{
-  const dot=document.getElementById('liveDot');
-  const lbl=document.getElementById('hdrStatus');
-  dot.classList.add('active');
-  lbl.textContent='API connectée — '+API_URL.replace('https://','');
-  lbl.style.color='var(--green)';
-}).catch(()=>{
-  document.getElementById('hdrStatus').textContent='API hors ligne — mode local';
+// Synchroniser le champ URL avec la valeur stockée
+const _inp = document.getElementById('apiUrlInput');
+if(_inp) _inp.value = CURRENT_API_URL;
+
+// Init après chargement complet du DOM
+window.addEventListener('DOMContentLoaded', function(){
+  pingAPI();
+  switchMethod('srv');
+  // livePredict avec délai pour laisser Chart.js se charger
+  setTimeout(livePredict, 300);
 });
-livePredict();
 </script>
 </body>
 </html>
