@@ -42,7 +42,7 @@ def load_artifacts():
 
     try:
         import torch
-        from src.model import LSTMSoH
+        from model import LSTMSoH
         _model = LSTMSoH(
             input_size =len(FEATURES),
             hidden_size=int(os.environ.get("HIDDEN_SIZE", 64)),

@@ -1386,7 +1386,7 @@ async function connectSrv(){
   showMgSrv('li','Test de connexion via API Render...');
   try{
     const r=await fetch(CURRENT_API_URL+'/health', {signal:AbortSignal.timeout(6000)});
-    if(!r.ok) throw new Error('API Render inaccessible — vérifiez l'URL dans le header');
+    if(!r.ok) throw new Error("API Render inaccessible — vérifiez l'URL dans le header");
     showMgSrv('lo','API Render accessible ✓ — Pour charger les données, assurez-vous que MONGO_URI est configurée dans les variables Render, puis cliquez "Charger données".');
   } catch(e){ showMgSrv('le','Erreur : '+e.message); }
 }
